@@ -1,5 +1,25 @@
-module main // must be named same as the file!
+module main
 
-import src/lib
+extern type Context2D
 
-def main(): Unit = println(helloWorld())
+extern io def createCanvas(): Context2D =
+  jsWeb """(function(){
+  canvas = document.createElement("canvas");
+  canvas.setAttribute("id", "canvas")
+  docBody = document.body
+  docBody.appendChild(canvas)
+  return canvas.getContext("2d");
+  })()
+  """
+
+extern io def drawRec(canvas: Context2D): Unit =
+  jsWeb """(function(){
+  ${canvas}.fillStyle = "green";
+  ${canvas}.fillRect(10, 10, 150, 100);
+  })()
+  """
+
+def main(): Unit = {
+  val canvas = createCanvas()
+  drawRec(canvas)
+}
