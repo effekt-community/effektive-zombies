@@ -12,8 +12,7 @@ def getElementById(id: String): Option[Node] = {
 
 extern io def addEventListener(eventType: String, callback: String => Unit at {io}): Unit =
   jsWeb """document.addEventListener(${eventType}, 
-    (event) => $effekt.runToplevel((ks, k) => (${callback})(event.key, ks, k)));
-    return $effekt.unit"""
+           (event) => $effekt.runToplevel((ks, k) => ${callback}(event.key, ks, k)))"""
 
 
 extern io def createCanvas(width: Int, height: Int): Node =
@@ -23,11 +22,11 @@ extern io def createCanvas(width: Int, height: Int): Node =
   canvas.setAttribute("width", ${width})
   canvas.setAttribute("height", ${height})
   document.body.appendChild(canvas)
-  return canvas.getContext("2d");
+  return canvas;
   })()
   """
 
 extern io def drawRect(canvas: Node, x: Int, y: Int, width: Int, height: Int, color: String): Unit =
-  jsWeb """${canvas}.fillStyle = ${color}; 
-    ${canvas}.fillRect(${x}, ${y}, ${width}, ${height});
-    return $effekt.unit"""
+  jsWeb """ctx = ${canvas}.getContext("2d");
+           ctx.fillStyle = ${color}; 
+           ctx.fillRect(${x}, ${y}, ${width}, ${height})"""
