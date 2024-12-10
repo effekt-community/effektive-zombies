@@ -1,5 +1,61 @@
-module main // must be named same as the file!
+module main
 
-import src/lib
+import src/ffi
 
-def main(): Unit = println(helloWorld())
+val KEY_DOWN = "keydown"
+val CANVAS_HEIGHT = 500
+val CANVAS_WIDTH = 500
+
+type Color {
+  Green()
+  Red()
+}
+
+def colorToString(color: Color): String = color match {
+  case Green() => "green"
+  case Red()   => "red"
+}
+
+type Drawable {
+  Rect(x: Int, y: Int, width: Int, height: Int, color: Color)
+  Circle(x: Int, y: Int, radius: Int)
+}
+
+interface Canvas {
+  def get(): Node
+  def drawRect(canvas: Node, x: Int, y: Int, width: Int, height: Int, color: String): Unit
+}
+
+def canvas[T] { function: () => T / {Canvas} }: T = {
+  try {
+    function()
+  } with Canvas {
+    def get = resume(getElementById("canvas").getOrElse { createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT) })
+    def drawRect(c, x, y, w, h, cl) = {
+      drawRect(c, x, y, w, h, cl)
+      resume(())
+    } 
+  }
+}
+
+def draw(object: Drawable): Unit / {Canvas} = object match {
+  case Rect(x, y, width, height, color) => drawRect(do get(), x, y, width, height, colorToString(color))
+  case _                                => ()
+}
+
+type Event = String
+
+def eventHandler(event: Event): Unit = event match {
+  case "w" => println("Hi") 
+  case "a" =>
+    with canvas; 
+    draw(Rect(300, 100, 150, 100, Red())) 
+  case  _  => ()
+}
+
+def main(): Unit = {
+  canvas {
+    draw(Rect(150, 100, 150, 100, Green()))
+  }
+  addEventListener(KEY_DOWN, eventHandler)
+}

@@ -1,0 +1,32 @@
+module ffi
+
+extern type Node
+
+extern io def unsafeGetElementById(id: String): Node =
+  jsWeb "document.getElementById(${id})"
+
+def getElementById(id: String): Option[Node] = {
+  val unsafeElement = unsafeGetElementById(id)
+  undefinedToOption(unsafeElement)
+}
+
+extern io def addEventListener(eventType: String, callback: String => Unit at {io}): Unit =
+  jsWeb """document.addEventListener(${eventType}, 
+           (event) => $effekt.runToplevel((ks, k) => ${callback}(event.key, ks, k)))"""
+
+
+extern io def createCanvas(width: Int, height: Int): Node =
+  jsWeb """(function(){
+  canvas = document.createElement("canvas");
+  canvas.setAttribute("id", "canvas")
+  canvas.setAttribute("width", ${width})
+  canvas.setAttribute("height", ${height})
+  document.body.appendChild(canvas)
+  return canvas;
+  })()
+  """
+
+extern io def drawRect(canvas: Node, x: Int, y: Int, width: Int, height: Int, color: String): Unit =
+  jsWeb """ctx = ${canvas}.getContext("2d");
+           ctx.fillStyle = ${color}; 
+           ctx.fillRect(${x}, ${y}, ${width}, ${height})"""
