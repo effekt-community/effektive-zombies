@@ -1,5 +1,31 @@
 module ffi
 
+record Vec2d(x: Double, y: Double)
+
+val NULL_VECTOR = Vec2d(0.0, 0.0)
+
+def infixAdd(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x + vec2.x, vec1.y + vec2.y)
+
+def normalize(vec: Vec2d): Vec2d = {
+  val length = sqrt(vec.x * vec.x + vec.y * vec.y)
+  if (length != 0.0) Vec2d(vec.x / length, vec.y / length) else NULL_VECTOR
+}
+
+def infixMul(vec: Vec2d, scalar: Int): Vec2d = scalar * vec
+
+def infixMul(scalar: Int, vec: Vec2d): Vec2d = scalar.toDouble() * vec
+
+def infixMul(vec: Vec2d, scalar: Double) = scalar * vec
+
+def infixMul(scalar: Double, vec: Vec2d): Vec2d = Vec2d(scalar * vec.x, scalar * vec.y)
+
+def equals(vec1: Vec2d, vec2: Vec2d): Bool = (vec1.x == vec2.x) && (vec1.y == vec2.y)
+
+def show(vec: Vec2d) = "Vec2d(" ++ show(vec.x) ++ ", " ++ show(vec.y) ++ ")"
+
+extern def toDouble(b: Bool): Double = 
+  jsWeb "(function() { if (${b}) { return 1; } else { return 0; }})()"
+
 extern type Node
 
 extern io def unsafeGetElementById(id: String): Node =
@@ -10,12 +36,12 @@ def getElementById(id: String): Option[Node] = {
   undefinedToOption(unsafeElement)
 }
 
-extern io def addEventListener(eventType: String, callback: String => Unit at {io}): Unit =
+extern io def addEventListener(eventType: String, callback: String => Unit at {io, global}): Unit =
   jsWeb """document.addEventListener(${eventType}, 
            (event) => $effekt.runToplevel((ks, k) => ${callback}(event.key, ks, k)))"""
 
 
-extern io def createCanvas(width: Int, height: Int): Node =
+extern io def createCanvas(width: Double, height: Double): Node =
   jsWeb """(function(){
   canvas = document.createElement("canvas");
   canvas.setAttribute("id", "canvas")
@@ -26,7 +52,24 @@ extern io def createCanvas(width: Int, height: Int): Node =
   })()
   """
 
-extern io def drawRect(canvas: Node, x: Int, y: Int, width: Int, height: Int, color: String): Unit =
+extern io def drawRect(canvas: Node, x: Double, y: Double, width: Int, height: Int, color: String): Unit =
   jsWeb """ctx = ${canvas}.getContext("2d");
            ctx.fillStyle = ${color}; 
            ctx.fillRect(${x}, ${y}, ${width}, ${height})"""
+
+extern io def clear(canvas: Node): Unit = 
+  jsWeb """ctx = ${canvas}.getContext("2d");
+           w = ${canvas}.width;
+           h = ${canvas}.height;
+           ctx.clearRect(0, 0, w, h)"""
+
+extern type IdleDeadline
+
+extern io def requestIdleCallback(callback: (IdleDeadline) => Unit at {io, global}): Unit =
+  jsWeb "window.requestIdleCallback(deadline => $effekt.runToplevel((ks, k) => ${callback}(deadline, ks, k)))"
+
+extern io def getTime(): Int = jsWeb "Date.now()"
+
+extern io def clientWidth(): Double = jsWeb "document.documentElement.clientWidth"
+
+extern io def clientHeight(): Double = jsWeb "document.documentElement.clientHeight"

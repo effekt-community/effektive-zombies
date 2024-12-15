@@ -1,0 +1,22 @@
+module test/test
+
+import test
+
+import src/ffi
+
+def main() = {
+  suite("moving") {
+
+    test("vector arithmetic") {
+      val v = 2 * (Vec2d(2.0, 3.0) + Vec2d(1.0, -1.0))
+      assertEqual(v, Vec2d(6.0, 4.0))
+    }
+
+    test("vector normalizing") {
+      val v = Vec2d(3.0, 4.0)
+      //length = sqrt(9 + 16) = 5
+      assertEqual(normalize(v), Vec2d(0.6, 0.8))
+    }
+  }
+}
+
