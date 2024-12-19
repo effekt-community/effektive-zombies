@@ -1,30 +1,7 @@
 module ffi
 
-record Vec2d(x: Double, y: Double)
-
-val NULL_VECTOR = Vec2d(0.0, 0.0)
-
-def infixAdd(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x + vec2.x, vec1.y + vec2.y)
-
-def normalize(vec: Vec2d): Vec2d = {
-  val length = sqrt(vec.x * vec.x + vec.y * vec.y)
-  if (length != 0.0) Vec2d(vec.x / length, vec.y / length) else NULL_VECTOR
-}
-
-def infixMul(vec: Vec2d, scalar: Int): Vec2d = scalar * vec
-
-def infixMul(scalar: Int, vec: Vec2d): Vec2d = scalar.toDouble() * vec
-
-def infixMul(vec: Vec2d, scalar: Double) = scalar * vec
-
-def infixMul(scalar: Double, vec: Vec2d): Vec2d = Vec2d(scalar * vec.x, scalar * vec.y)
-
-def equals(vec1: Vec2d, vec2: Vec2d): Bool = (vec1.x == vec2.x) && (vec1.y == vec2.y)
-
-def show(vec: Vec2d) = "Vec2d(" ++ show(vec.x) ++ ", " ++ show(vec.y) ++ ")"
-
 extern def toDouble(b: Bool): Double = 
-  jsWeb "(function() { if (${b}) { return 1; } else { return 0; }})()"
+  js "(function() { if (${b}) { return 1; } else { return 0; }})()"
 
 extern type Node
 
@@ -36,9 +13,23 @@ def getElementById(id: String): Option[Node] = {
   undefinedToOption(unsafeElement)
 }
 
-extern io def addEventListener(eventType: String, callback: String => Unit at {io, global}): Unit =
+extern type Event
+
+extern io def addEventListener(eventType: String, callback: Event => Unit at {io, global}): Unit =
   jsWeb """document.addEventListener(${eventType}, 
-           (event) => $effekt.runToplevel((ks, k) => ${callback}(event.key, ks, k)))"""
+           (event) => $effekt.runToplevel((ks, k) => ${callback}(event, ks, k)))"""
+
+extern pure def getKey(event: Event): String =
+  jsWeb "${event}.key"
+
+extern io def getClientX(event: Event): Double = 
+  jsWeb "${event}.clientX"
+
+extern io def getClientY(event: Event): Double =
+  jsWeb "${event}.clientY"
+
+extern io def getButton(event: Event): Int =
+  jsWeb "${event}.button"
 
 
 extern io def createCanvas(width: Double, height: Double): Node =
@@ -52,16 +43,44 @@ extern io def createCanvas(width: Double, height: Double): Node =
   })()
   """
 
-extern io def drawRect(canvas: Node, x: Double, y: Double, width: Int, height: Int, color: String): Unit =
+extern io def drawRect(
+  canvas: Node, x: Double, y: Double, 
+  width: Int, height: Int, color: String
+): Unit =
   jsWeb """ctx = ${canvas}.getContext("2d");
            ctx.fillStyle = ${color}; 
-           ctx.fillRect(${x}, ${y}, ${width}, ${height})"""
+           ctx.fillRect(${x}, ${y}, ${width}, ${height});"""
+
+extern io def drawCircle(canvas: Node, x: Double, y: Double, radius: Int, color: String): Unit =
+  jsWeb """ctx = ${canvas}.getContext("2d");
+           ctx.fillStyle = ${color};
+           ctx.beginPath();
+           ctx.arc(${x}, ${y}, ${radius}, 0, 2 * Math.PI);
+           ctx.fill();"""
 
 extern io def clear(canvas: Node): Unit = 
   jsWeb """ctx = ${canvas}.getContext("2d");
            w = ${canvas}.width;
            h = ${canvas}.height;
            ctx.clearRect(0, 0, w, h)"""
+
+//Sets up the transformation matrix to rotate all later drawn shapes clockwise by the given angle 
+//relative to the given coordinates
+extern io def setupRotation(canvas: Node, angle: Double, relativeToX: Double, relativeToY: Double): Unit =
+  jsWeb """ctx = ${canvas}.getContext("2d");
+           ctx.translate(${relativeToX}, ${relativeToY});
+           ctx.rotate(${angle});
+           ctx.translate(-${relativeToX}, -${relativeToY});"""
+
+extern type DOMMatrix
+
+extern io def getTransform(canvas: Node): DOMMatrix = 
+  jsWeb """ctx = ${canvas}.getContext("2d");
+           ctx.getTransform();"""
+
+extern io def setTransform(canvas: Node, matrix: DOMMatrix): Unit =
+  jsWeb """ctx = ${canvas}.getContext("2d");
+           ctx.setTransform(${matrix});"""
 
 extern type IdleDeadline
 

@@ -1,0 +1,50 @@
+module vec2d
+
+record Vec2d(x: Double, y: Double)
+
+val NULL_VECTOR = Vec2d(0.0, 0.0)
+
+def infixAdd(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x + vec2.x, vec1.y + vec2.y)
+
+def infixSub(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x - vec2.x, vec1.y - vec2.y)
+
+def normalize(vec: Vec2d): Vec2d = {
+  val length = sqrt(vec.x * vec.x + vec.y * vec.y)
+  if (length != 0.0) Vec2d(vec.x / length, vec.y / length) else NULL_VECTOR
+}
+
+def infixMul(vec: Vec2d, scalar: Int): Vec2d = scalar * vec
+
+def infixMul(scalar: Int, vec: Vec2d): Vec2d = scalar.toDouble() * vec
+
+def infixMul(vec: Vec2d, scalar: Double) = scalar * vec
+
+def infixMul(scalar: Double, vec: Vec2d): Vec2d = Vec2d(scalar * vec.x, scalar * vec.y)
+
+def almostEqual(d1: Double, d2: Double): Bool = (d1 - d2) < 0.001
+
+def infixEq(vec1: Vec2d, vec2: Vec2d): Bool = vec1.x.almostEqual(vec2.x) && vec1.y.almostEqual(vec2.y)
+
+def show(vec: Vec2d) = "Vec2d(" ++ show(vec.x) ++ ", " ++ show(vec.y) ++ ")"
+
+//Calculates the angle of the vector relative to the x-axis, the resulting angle is interpreted like this:
+//if we rotate the x-axis by the returned angle clockwise, it is parallel to the given vector
+def angleClockwise(vec1: Vec2d): Double = {
+  if (vec1.x != 0.0) {
+    val angle = atan(vec1.y / vec1.x) 
+    val clockwise = if (vec1.x < 0.0) PI else { 
+      if (vec1.y < 0.0) 2.0 * PI else 0.0 
+    }
+    angle + clockwise
+  } else { if (vec1.y < 0.0) 1.5 * PI else 0.5 * PI }
+}
+
+//rotates the given vector clockwise by the given angle, relative to the origin
+// https://matthew-brett.github.io/teaching/rotation_2d.html  
+def rotate(toRotate: Vec2d, angle: Double): Vec2d = {
+  val sinCW = sin(angle)
+  val cosCW = cos(angle)
+  val rotatedX = cosCW * toRotate.x - sinCW * toRotate.y
+  val rotatedY = sinCW * toRotate.x + cosCW * toRotate.y
+  Vec2d(rotatedX, rotatedY)
+}

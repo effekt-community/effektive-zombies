@@ -1,39 +1,72 @@
 module main
 
 import src/ffi
-import src/map
+import src/vec2d
+import mutable/map
 
 val KEY_DOWN = "keydown"
 val KEY_UP = "keyup"
+val MOUSE_MOVE = "mousemove"
+val MOUSE_DOWN = "mousedown"
 val DEFAULT_CANVAS_WIDTH = 1280.0
 val DEFAULT_CANVAS_HEIGHT = 720.0
 
 type Color {
   Green()
   Red()
+  Black()
 }
 
 def toString(color: Color): String = color match {
   case Green() => "green"
   case Red()   => "red"
+  case Black() => "black"
 }
 
 type Drawable {
-  Rect(pos: Vec2d, width: Int, height: Int, color: Color)
+  Rect(upperLeft: Vec2d, width: Int, height: Int, color: Color)
   Circle(pos: Vec2d, radius: Int, color: Color)
+  Rotate(inner: Drawable, rotation: Double, relativeTo: Vec2d)
+  Compose(first: Drawable, second: Drawable)
+}
+
+def changeColor(drawable: Drawable, to: Color): Drawable = drawable match {
+  case Rect(uL, w, h, _) => Rect(uL, w, h, to)
+  case Circle(p, r, _) => Circle(p, r, to)
+  case Rotate(inner, r, relat) => Rotate(inner.changeColor(to), r, relat)
+  case Compose(first, second) => Compose(first.changeColor(to), second.changeColor(to))
+}
+
+def getCenter(drawable: Drawable): Vec2d = drawable match {
+  case Rect(upperLeft, width, height, _) => 
+    upperLeft + Vec2d(0.5 * width.toDouble(), 0.5 * height.toDouble())
+  case Circle(pos, _, _) => pos
+  case Rotate(inner, rotation, relativeTo) => rotate(inner.getCenter() - relativeTo, rotation)
+  case Compose(first, second) => first.getCenter()
 }
 
 type GameObject {
-  Player(hitbox: Drawable)
+  Shot(hitbox: Drawable, movementVector: Vec2d)
 }
 
-def getHitbox(object: GameObject): Drawable = object match {
-  case Player(hitbox) => hitbox
+def getCenter(object: GameObject): Vec2d = object match {
+  case Shot(hitbox, _) => hitbox.getCenter()
 }
+
+def getDrawable(object: GameObject): Drawable = object match {
+  case Shot(hitbox, _) => hitbox
+}
+
+record Player(hitbox: Drawable, gun: Drawable)
+
+record Game(player: Player, objects: List[GameObject])
+
+def addObject(game: Game, gameObject: GameObject): Game = 
+  Game(game.player, Cons(gameObject, game.objects))
 
 interface Canvas {
   def get(): Node
-  def draw(object: GameObject): Unit
+  def draw(drawable: Drawable): Unit
   def clear(): Unit
 }
 
@@ -44,12 +77,22 @@ def canvas[T] { function: () => T / {Canvas} }: T = {
     def get = resume(getElementById("canvas").getOrElse { 
       createCanvas(DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT) 
     })
-    def draw(object) = {
+    def draw(drawable) = {
       canvas { 
-        object.getHitbox() match {
-          case Rect(pos, width, height, color) => 
-            drawRect(do get(), pos.x, pos.y, width, height, color.toString())
-          case _ => ()
+        drawable match {
+          case Rect(upperLeft, width, height, color) => 
+            drawRect(do get(), upperLeft.x, upperLeft.y, width, height, color.toString())
+          case Circle(pos, radius, color) => 
+            drawCircle(do get(), pos.x, pos.y, radius, color.toString())
+          case Rotate(inner, rotation, relativeTo) =>
+            val canvas = do get()
+            val oldMatrix = canvas.getTransform()
+            canvas.setupRotation(rotation, relativeTo.x, relativeTo.y)
+            do draw(inner)
+            canvas.setTransform(oldMatrix)
+          case Compose(first, second) =>
+            do draw(first)
+            do draw(second)
         } 
       }
       resume(())
@@ -62,8 +105,14 @@ def canvas[T] { function: () => T / {Canvas} }: T = {
 }
 
 def move(drawable: Drawable, dVec: Vec2d): Drawable = drawable match {
-  case Rect(pos, w, h, c) => Rect(pos + dVec, w, h, c)
+  case Rect(upperLeft, w, h, c) => Rect(upperLeft + dVec, w, h, c)
   case Circle(pos, r, c) => Circle(pos + dVec, r, c)
+  case Rotate(inner, angle, relativeTo) => Rotate(inner.move(dVec), angle, relativeTo + dVec)
+  case Compose(first, second) => Compose(first.move(dVec), second.move(dVec))
+}
+
+def move(gameObject: GameObject, dt: Int): GameObject = gameObject match {
+  case Shot(hitbox, movementVector) => Shot(hitbox.move(movementVector * dt), movementVector)
 }
 
 def getAxisMovement(keyMap: Map[String, Bool], minusKey: String, plusKey: String): Double = {
@@ -78,29 +127,33 @@ def assembleMovement(keyMap: Map[String, Bool], speed: Double): Vec2d = {
   normalize(Vec2d(x, y)) * speed
 }
 
-type Event = String
-
 def main(): Unit = {
   val CANVAS_WIDTH = clientWidth()
   val CANVAS_HEIGHT = clientHeight()
   val CANVAS_CENTER = Vec2d(CANVAS_WIDTH / 2.0, CANVAS_HEIGHT / 2.0)
   createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT)
 
-  val PLAYER_WIDTH = 100
-  val PLAYER_HEIGHT = 100
+  val PLAYER_SIZE = CANVAS_HEIGHT / 15.0
   val PLAYER_SPEED = 0.4
-  val player = Player(
-    Rect(CANVAS_CENTER + -0.5 * Vec2d(PLAYER_WIDTH.toDouble(), PLAYER_HEIGHT.toDouble()), 
-    PLAYER_WIDTH, PLAYER_HEIGHT, Green())
-  )
-  val objects = ref[List[GameObject]]([player])
+  val PLAYER_START_POS = CANVAS_CENTER
+  val PLAYER_HITBOX = Circle(PLAYER_START_POS, PLAYER_SIZE.toInt(), Green())
+
+  val GUN_WIDTH  = PLAYER_SIZE / 1.2
+  val GUN_HEIGTH = GUN_WIDTH / 3.0
+  val GUN_START_POS = PLAYER_START_POS + Vec2d(PLAYER_SIZE - 1.0, -0.5 * GUN_HEIGTH)
+  val GUN = Rect(GUN_START_POS, GUN_WIDTH.toInt(), GUN_HEIGTH.toInt(), Black())
+
+  val START_PLAYER = Player(PLAYER_HITBOX, GUN)
+
+  val game = ref[Game](Game(START_PLAYER, []))
 
   val keysPressed = emptyMap[String, Bool]()
+  val mousePos = ref[Vec2d](NULL_VECTOR)
   val now = ref[Int](getTime())
 
-  def move(object: GameObject, dt: Int): GameObject = object match {
-    case Player(hitbox) => 
-      Player(hitbox.move(dt * keysPressed.assembleMovement(PLAYER_SPEED)))
+  def move(player: Player, dt: Int): Player = {
+    val dV = dt * keysPressed.assembleMovement(PLAYER_SPEED)
+    Player(player.hitbox.move(dV), player.gun.move(dV))
   }
 
   def calcDt(): Int = {
@@ -111,20 +164,46 @@ def main(): Unit = {
 
   def render(deadline: IdleDeadline): Unit = {
     val dt = calcDt()
-    val objs = objects.get
-    val movedObjs = objs.map { obj => obj.move(dt) }
+    val player = game.get.player
+    val movedPlayer = player.move(dt)
+    val movedObjects = game.get.objects.map { o => o.move(dt) }
+    val movedPlayerCenter = movedPlayer.hitbox.getCenter()
+    val gunAngle = angleClockwise(mousePos.get - movedPlayerCenter)
     canvas {
       do clear()
-      movedObjs.foreach { obj => do draw(obj) }
+      do draw(Rotate(Compose(player.hitbox, player.gun), gunAngle, movedPlayerCenter))
+      movedObjects.foreach { o => do draw(o.getDrawable()) }
     }
-    objects.set(movedObjs)
+    game.set(Game(movedPlayer, movedObjects))
     requestIdleCallback(render)
   }
 
-  def pressedHandler(event: Event): Unit = keysPressed.update(event, true)
-  def releasedHandler(event: Event): Unit = keysPressed.update(event, false)
+  def pressedHandler(event: Event): Unit = keysPressed.update(event.getKey(), true)
+  def releasedHandler(event: Event): Unit = keysPressed.update(event.getKey(), false)
+  def mouseMoveHandler(event: Event): Unit = {
+    val x = event.getClientX()
+    val y = event.getClientY()
+    mousePos.set(Vec2d(x, y))
+  }
+
+  def mouseDownHandler(event: Event): Unit = {
+    val leftButtonPressed = event.getButton() == 0
+    if (leftButtonPressed) {
+      val player = game.get.player
+      val playerCenter = player.hitbox.getCenter()
+      val gunAngle = angleClockwise(mousePos.get - playerCenter)
+      val shotDrawable = player.gun.changeColor(Black())
+      val shot = Shot(
+        Rotate(shotDrawable, gunAngle, playerCenter),
+        Vec2d(1.0, 0.0).rotate(gunAngle)
+      )
+      game.set(game.get.addObject(shot))
+    }
+  }
 
   addEventListener(KEY_DOWN, pressedHandler)
   addEventListener(KEY_UP, releasedHandler)
+  addEventListener(MOUSE_MOVE, mouseMoveHandler)
+  addEventListener(MOUSE_DOWN, mouseDownHandler)
   requestIdleCallback(render)
 }

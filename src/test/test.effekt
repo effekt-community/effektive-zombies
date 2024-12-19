@@ -2,21 +2,89 @@ module test/test
 
 import test
 
-import src/ffi
+import src/vec2d
+import mutable/map
+import src/main
 
-def main() = {
-  suite("moving") {
+def main(): Unit = mainSuite("") {
+  test("vector arithmetic") {
+    val v = 2 * (Vec2d(2.0, 3.0) + Vec2d(1.0, -1.0))
+    assertEqual(v, Vec2d(6.0, 4.0))
+  }
 
-    test("vector arithmetic") {
-      val v = 2 * (Vec2d(2.0, 3.0) + Vec2d(1.0, -1.0))
-      assertEqual(v, Vec2d(6.0, 4.0))
+  test("vector normalizing") {
+    val v = Vec2d(3.0, 4.0)
+    //length = sqrt(9 + 16) = 5
+    assertEqual(normalize(v), Vec2d(0.6, 0.8))
+  }
+
+  test("angles") {
+    val vectors = [
+      Vec2d(1.0, 0.0),
+      Vec2d(1.0, 1.0),
+      Vec2d(0.001, 1.0),
+      Vec2d(-1.0, 1.0),
+      Vec2d(-1.0, 0.0),
+      Vec2d(-1.0, -1.0),
+      Vec2d(0.001, -1.0),
+      Vec2d(1.0, -1.0)
+    ]
+
+    var expectedAngle = 0.0
+    vectors.foreach { v =>
+      val calculatedAngle = angleClockwise(v)  
+      val msg = "angleClockwise(" ++ show(v) ++ ") = " 
+                ++ show(calculatedAngle) ++ " which is not near the expected " ++ show(expectedAngle)
+      assertTrue(almostEqual(calculatedAngle, expectedAngle), msg)
+      expectedAngle = expectedAngle + 0.25 * PI
     }
+  }
 
-    test("vector normalizing") {
-      val v = Vec2d(3.0, 4.0)
-      //length = sqrt(9 + 16) = 5
-      assertEqual(normalize(v), Vec2d(0.6, 0.8))
+  test("rotating") {
+    val expected = Vec2d(1.0, 0.0)
+
+    val vectors = [
+      expected,
+      Vec2d(1.0, 1.0),
+      Vec2d(0.001, 1.0),
+      Vec2d(-1.0, 1.0),
+      Vec2d(-1.0, 0.0),
+      Vec2d(-1.0, -1.0),
+      Vec2d(0.001, -1.0),
+      Vec2d(1.0, -1.0)
+    ].map { v => v.normalize() }
+
+    var rotationAngle = 0.0
+
+    vectors.foreach { v =>
+      val calculated = v.rotate(rotationAngle)
+      val msg = show(v) ++ ".rotate(" ++ show(rotationAngle) ++ ") = " 
+                ++ show(calculated) ++ " which is not the expected " ++ show(expected)
+      assertTrue(calculated == expected, msg)
+      rotationAngle = rotationAngle - 0.25 * PI 
     }
+  }
+
+  test("playerMovement") {
+    val keyMap = emptyMap[String, Bool]()
+    def assertV(expected: Vec2d) = {
+      val calculated = keyMap.assembleMovement(1.0)
+      val msg = "Map " ++ show(keyMap.keys()) ++ " " ++ show(keyMap.values) ++ ".assembleMovement(1.0) = "
+                ++ show(calculated) ++ ", but expected " ++ show(expected) 
+      assertTrue(calculated == expected, msg)
+    }
+    assertV(NULL_VECTOR)
+    keyMap.update("w", true)
+    assertV(Vec2d(0.0, -1.0))
+    keyMap.update("s", true)
+    assertV(NULL_VECTOR)
+    keyMap.update("a", true)
+    assertV(Vec2d(-1.0, 0.0))
+    keyMap.update("w", false)
+    keyMap.update("s", false)
+    assertV(Vec2d(-1.0, 0.0))
+    keyMap.update("d", true)
+    assertV(NULL_VECTOR)
   }
 }
 
