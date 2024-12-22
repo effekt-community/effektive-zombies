@@ -7,6 +7,8 @@ This is a top-down survival game written in Effekt.
 Install Effekt: https://effekt-lang.org/docs#installing-effekt
 
 Run with Effekt: `effekt ./src/main.effekt --backend js-web --includes .`
+
+Open `out/main.html`
 \
 \
 \
