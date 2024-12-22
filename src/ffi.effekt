@@ -45,13 +45,13 @@ extern io def createCanvas(width: Double, height: Double): Node =
 
 extern io def drawRect(
   canvas: Node, x: Double, y: Double, 
-  width: Int, height: Int, color: String
+  width: Double, height: Double, color: String
 ): Unit =
   jsWeb """ctx = ${canvas}.getContext("2d");
            ctx.fillStyle = ${color}; 
            ctx.fillRect(${x}, ${y}, ${width}, ${height});"""
 
-extern io def drawCircle(canvas: Node, x: Double, y: Double, radius: Int, color: String): Unit =
+extern io def drawCircle(canvas: Node, x: Double, y: Double, radius: Double, color: String): Unit =
   jsWeb """ctx = ${canvas}.getContext("2d");
            ctx.fillStyle = ${color};
            ctx.beginPath();

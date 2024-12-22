@@ -1,90 +1,288 @@
 module test/test
 
 import test
+import process
 
 import src/vec2d
 import mutable/map
 import src/main
 
 def main(): Unit = mainSuite("") {
-  test("vector arithmetic") {
-    val v = 2 * (Vec2d(2.0, 3.0) + Vec2d(1.0, -1.0))
-    assertEqual(v, Vec2d(6.0, 4.0))
-  }
+  val testResults = [
+  suite("Vec2d") {
+    test("vector arithmetic") {
+      val v = 2 * (Vec2d(2.0, 3.0) + Vec2d(1.0, -1.0))
+      assertEqual(v, Vec2d(6.0, 4.0))
+    }
 
-  test("vector normalizing") {
-    val v = Vec2d(3.0, 4.0)
-    //length = sqrt(9 + 16) = 5
-    assertEqual(normalize(v), Vec2d(0.6, 0.8))
-  }
+    test("vector normalizing") {
+      val v = Vec2d(3.0, 4.0)
+      //length = sqrt(9 + 16) = 5
+      assertEqual(normalize(v), Vec2d(0.6, 0.8))
+    }
+  },
 
-  test("angles") {
-    val vectors = [
-      Vec2d(1.0, 0.0),
-      Vec2d(1.0, 1.0),
-      Vec2d(0.001, 1.0),
-      Vec2d(-1.0, 1.0),
-      Vec2d(-1.0, 0.0),
-      Vec2d(-1.0, -1.0),
-      Vec2d(0.001, -1.0),
-      Vec2d(1.0, -1.0)
-    ]
+  suite("rotations") {
+    test("angle calculation") {
+      val vectors = [
+        Vec2d(1.0, 0.0),
+        Vec2d(1.0, 1.0),
+        Vec2d(0.001, 1.0),
+        Vec2d(-1.0, 1.0),
+        Vec2d(-1.0, 0.0),
+        Vec2d(-1.0, -1.0),
+        Vec2d(0.001, -1.0),
+        Vec2d(1.0, -1.0)
+      ]
 
-    var expectedAngle = 0.0
-    vectors.foreach { v =>
-      val calculatedAngle = angleClockwise(v)  
-      val msg = "angleClockwise(" ++ show(v) ++ ") = " 
-                ++ show(calculatedAngle) ++ " which is not near the expected " ++ show(expectedAngle)
-      assertTrue(almostEqual(calculatedAngle, expectedAngle), msg)
-      expectedAngle = expectedAngle + 0.25 * PI
+      var expectedAngle = 0.0
+      vectors.foreach { v =>
+        assertEqual(angleClockwise(v), expectedAngle) 
+          { (d1, d2) => almostEqual(d1, d2, 0.001) } { d => genericShow[Double](d) }
+        expectedAngle = expectedAngle + 0.25 * PI
+      }
+    }
+
+    test("rotate around origin") {
+      val expected = Vec2d(1.0, 0.0)
+
+      val vectors = [
+        expected,
+        Vec2d(1.0, 1.0),
+        Vec2d(0.001, 1.0),
+        Vec2d(-1.0, 1.0),
+        Vec2d(-1.0, 0.0),
+        Vec2d(-1.0, -1.0),
+        Vec2d(0.001, -1.0),
+        Vec2d(1.0, -1.0)
+      ].map { v => v.normalize() }
+
+      var rotationAngle = 0.0
+
+      vectors.foreach { v =>
+        assertEqual(v.rotate(rotationAngle), expected) 
+          { vec2d::infixEq } { vec2d::show }
+        rotationAngle = rotationAngle - 0.25 * PI 
+      }
+    }
+
+    test("rotate relative") {
+      val toRotate = Vec2d(2.0, 2.0)
+      val angle = PI
+      val relativeTo = Vec2d(1.0, 1.0)
+      val expected = Vec2d(1.0, 2.0)
+
+      assertEqual(toRotate.rotate(angle, relativeTo), expected) 
+        { vec2d::infixEq } { vec2d::show }
+    }
+  },
+
+  suite("collapse rotations") {
+    val inner = Simple(Circle(fromInt(1, 1), 1.0, Red()))
+
+    test("simpleCollapse") {
+      val simpleCollapse = Rotate(
+        Rotate(
+          inner,
+          0.5 * PI,
+          None()
+        ),
+        0.5 * PI,
+        None()
+      )
+
+      val expected = Rotate(
+        inner,
+        PI,
+        None()
+      )
+
+      assertEqual(simpleCollapse.collapseRotations(), expected)
+    }
+
+    test("no collapse") {
+      val noCollapse = Rotate(
+        Rotate(
+          inner,
+          0.5 * PI,
+          Some(Vec2d(1.0, 1.0))
+        ),
+        0.5 * PI,
+        Some(Vec2d(0.5, 0.5))
+      )
+
+      assertEqual(noCollapse.collapseRotations(), noCollapse)
+    }
+
+    test("complex collapse") {
+      def rot(d: ManipulatedDrawable, angle: Double): ManipulatedDrawable = 
+        Rotate(d, angle, None())
+
+      val complexCollapse = Compose(inner.rot(PI).rot(PI), inner).rot(PI).rot(0.5 * PI)
+
+      val complexCollapseExpected = Rotate(
+        Compose(
+          Rotate(
+            inner,
+            2.0 * PI,
+            None()
+          ),
+          inner
+        ),
+        1.5 * PI,
+        None()
+      )
+
+      assertEqual(complexCollapse.collapseRotations(), complexCollapseExpected)
+    }
+  },
+
+  suite("getCenter") {
+    test("same center after rotating around ones own center") {
+      val rect = Rect(Vec2d(10.0, 10.0), 10.0, 5.0, Red())
+      val rectPointingUp = Rotate(
+        Simple(rect), 
+        0.5 * PI, None()
+      )
+      assertEqual(rect.getCenter(), rectPointingUp.getCenter()) 
+        { vec2d::infixEq } { vec2d::show }
+    }
+
+    test("rectangle-hitbox center") {
+      val rect = HRect(
+        fromInt(1, 1), fromInt(4, 2), 
+        Vec2d(4.0 - 2.0 / 3.0, 4.0), Vec2d(1.0 / 3.0, 3.0) 
+      )
+
+      val expected = Vec2d(2.0 + 1.0 / 6.0, 2.5)
+
+      assertEqual(rect.getCenter(), expected) { vec2d::infixEq } { vec2d::show }
+    }
+  },
+
+  suite("movement") {
+    test("moving rotated shape") {
+      val rect = Rect(Vec2d(10.0, 10.0), 10.0, 5.0, Red())
+      val rectPointingUp = Rotate(
+        Simple(rect), 
+        0.5 * PI, None()
+      )
+      val movedRect = rectPointingUp.move(Vec2d(5.0, 5.0))
+      val expected = Rotate(
+        Simple(Rect(Vec2d(15.0, 15.0), 10.0, 5.0, Red())),
+        0.5 * PI, None()
+      )
+      assertEqual(movedRect, expected)
+    }
+
+    test("playerMovement") {
+      val keyMap = emptyMap[String, Bool]()
+      def assertV(expected: Vec2d) = {
+        val calculated = keyMap.assembleMovement(1.0)
+        val msg = "Map " ++ show(keyMap.keys()) ++ " " ++ show(keyMap.values) ++ ".assembleMovement(1.0) = "
+                  ++ show(calculated) ++ ", but expected " ++ show(expected) 
+        assertTrue(calculated == expected, msg)
+      }
+      assertV(NULL_VECTOR)
+      keyMap.update("w", true)
+      assertV(Vec2d(0.0, -1.0))
+      keyMap.update("s", true)
+      assertV(NULL_VECTOR)
+      keyMap.update("a", true)
+      assertV(Vec2d(-1.0, 0.0))
+      keyMap.update("w", false)
+      assertV(Vec2d(-1.0 / sqrt(2.0), 1.0 / sqrt(2.0)))
+      keyMap.update("s", false)
+      assertV(Vec2d(-1.0, 0.0))
+      keyMap.update("d", true)
+      assertV(NULL_VECTOR)
+    }
+  },
+
+  suite("collision") {
+    test("point inside") {
+      val point = Vec2d(0.0, -1.0)
+      val hitbox = Rect(NULL_VECTOR, 3.0, 2.0, Red()).toHitbox()
+        .rotate(1.25 * PI, Some(NULL_VECTOR))
+      val msg = "Point " ++ show(point) ++ " should be inside " ++ genericShow(hitbox)
+      assertTrue(point.isInside(hitbox), msg)
+    }
+    
+    test("point outside") {
+      val point = Vec2d(0.0, 0.0)
+      val hitbox = HCompose(
+        HCircle(Vec2d(-2.0, -2.0), 1.5),
+        HCircle(Vec2d(2.0, 2.0), 1.5)
+      )
+      
+      val msg = "Point " ++ show(point) 
+                ++ " should not be inside " ++ genericShow(hitbox)
+      assertFalse(point.isInside(hitbox), msg)
+    }
+
+    test("hitbox collision") {
+      val rectHitbox = HRect(
+        Vec2d(0.0, 0.0),
+        Vec2d(1.0, -2.0),
+        Vec2d(-2.0, -5.0),
+        Vec2d(-4.0, -3.0)
+      )
+      val circleHitbox = HCircle(
+        Vec2d(0.0, -4.0),
+        1.0
+      )
+
+      assertTrue(rectHitbox.collides(circleHitbox))
+    }
+  },
+
+  suite("other") {
+    test("Circle AABB") {
+      val circle = Circle(Vec2d(5.0, 5.0), 3.0, Red())
+      val expectedAABB = AABB(Vec2d(2.0, 2.0), Vec2d(8.0, 8.0))
+      val actual = circle.getAABB()
+      assertEqual(actual, expectedAABB)
+    }
+
+    //This test has a very small chance to fail
+    test("side choosing") {
+      val width = 5.0
+      val height = 3.0
+      val rightProb = 0.1875
+      val leftProb = rightProb
+      val topProb = 0.3125
+      val bottomProb = topProb
+
+      var n = 100000
+      val size = n.toDouble()
+      var rCount = 0.0
+      var bCount = 0.0
+      var lCount = 0.0
+      var tCount = 0.0
+      while(n != 0) {
+        chooseSide(height.toInt(), width.toInt()) match {
+          case Right() => rCount = rCount + 1.0
+          case Bottom() => bCount = bCount + 1.0
+          case Left() => lCount = lCount + 1.0
+          case Top() => tCount = tCount + 1.0
+        }
+        n = n - 1
+      }
+
+      def assertProb(name: String, actual: Double, expected: Double) = {
+        val msg = "Probability of " ++ name ++ " is " ++ show(actual)
+                  ++ " instead of the expected " ++ show(expected)
+        assertTrue(almostEqual(actual, expected, 0.01), msg)
+      }
+      assertProb("Right", rCount / size, rightProb)
+      assertProb("Bottom", bCount / size, bottomProb)
+      assertProb("Left", lCount / size, leftProb)
+      assertProb("Top", tCount / size, topProb)
     }
   }
-
-  test("rotating") {
-    val expected = Vec2d(1.0, 0.0)
-
-    val vectors = [
-      expected,
-      Vec2d(1.0, 1.0),
-      Vec2d(0.001, 1.0),
-      Vec2d(-1.0, 1.0),
-      Vec2d(-1.0, 0.0),
-      Vec2d(-1.0, -1.0),
-      Vec2d(0.001, -1.0),
-      Vec2d(1.0, -1.0)
-    ].map { v => v.normalize() }
-
-    var rotationAngle = 0.0
-
-    vectors.foreach { v =>
-      val calculated = v.rotate(rotationAngle)
-      val msg = show(v) ++ ".rotate(" ++ show(rotationAngle) ++ ") = " 
-                ++ show(calculated) ++ " which is not the expected " ++ show(expected)
-      assertTrue(calculated == expected, msg)
-      rotationAngle = rotationAngle - 0.25 * PI 
-    }
-  }
-
-  test("playerMovement") {
-    val keyMap = emptyMap[String, Bool]()
-    def assertV(expected: Vec2d) = {
-      val calculated = keyMap.assembleMovement(1.0)
-      val msg = "Map " ++ show(keyMap.keys()) ++ " " ++ show(keyMap.values) ++ ".assembleMovement(1.0) = "
-                ++ show(calculated) ++ ", but expected " ++ show(expected) 
-      assertTrue(calculated == expected, msg)
-    }
-    assertV(NULL_VECTOR)
-    keyMap.update("w", true)
-    assertV(Vec2d(0.0, -1.0))
-    keyMap.update("s", true)
-    assertV(NULL_VECTOR)
-    keyMap.update("a", true)
-    assertV(Vec2d(-1.0, 0.0))
-    keyMap.update("w", false)
-    keyMap.update("s", false)
-    assertV(Vec2d(-1.0, 0.0))
-    keyMap.update("d", true)
-    assertV(NULL_VECTOR)
-  }
+  ]
+  val allTestsSucceeded = testResults.all { res => res }
+  val exitCode = if (allTestsSucceeded) 0 else 1
+  process::exit(exitCode)
 }
 
