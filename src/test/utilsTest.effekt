@@ -1,0 +1,47 @@
+module utilsTest
+
+import test
+import src/utils
+
+def utilsSuite() = suite("utils") {
+  //This test has a very small chance to fail
+  test("side choosing") {
+    val width = 5.0
+    val height = 3.0
+    val rightProb = 0.1875
+    val leftProb = rightProb
+    val topProb = 0.3125
+    val bottomProb = topProb
+    val sides = ["top", "right", "bottom", "left"]
+    val probs = [topProb, rightProb, bottomProb, leftProb]
+
+    var n = 30000
+    val size = n.toDouble()
+    var rCount = 0.0
+    var bCount = 0.0
+    var lCount = 0.0
+    var tCount = 0.0
+    while(n != 0) {
+      val chosenSide = try { sides.choose(probs).getOrElse{"right"} } 
+                      with random { resume(random()) }
+      chosenSide match {
+        case "right" => rCount = rCount + 1.0
+        case "bottom" => bCount = bCount + 1.0
+        case "left" => lCount = lCount + 1.0
+        case "top" => tCount = tCount + 1.0
+        case _ => <>
+      }
+      n = n - 1
+    }
+
+    def assertProb(name: String, actual: Double, expected: Double) = {
+      val msg = "Probability of " ++ name ++ " is " ++ show(actual)
+                ++ " instead of the expected " ++ show(expected)
+      assertTrue(almostEqual(actual, expected, 0.01), msg)
+    }
+    assertProb("Right", rCount / size, rightProb)
+    assertProb("Bottom", bCount / size, bottomProb)
+    assertProb("Left", lCount / size, leftProb)
+    assertProb("Top", tCount / size, topProb)
+  }
+}

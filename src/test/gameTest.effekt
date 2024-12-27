@@ -1,0 +1,140 @@
+module gameTest
+
+import test
+import mutable/map
+import src/game
+import src/utils
+import src/vec2d
+import src/shapes/manipulated
+import src/shapes/simple
+
+def gameSuite() = suite("game") {
+  val player = Player(
+    Circle(Vec2d(30.0, 30.0), 50.0, Green()),
+    Rect(Vec2d(80.0, 25.0), 10.0, 10.0, Black()), 1.0
+  )
+  val game = GameState(player, [])
+
+  def pseudoHandler { f: () => Unit / {Input, random, Screen} }: Unit = {
+    try { f() }
+    with Screen {
+      def width = resume(0.0)
+      def height = resume(0.0)
+    } with Input {
+      def isPressed(key) = resume(false)
+      def mousePos() = resume(Vec2d(0.0, 0.0))
+    } with random {
+      resume(0.0)
+    }
+  }
+
+  test("playerMovement") {
+    val keyMap = emptyMap[String, Bool]()
+    def assertV(expected: Vec2d) = {
+      val calculated = try { wasdDirection() }
+      with Input {
+        def isPressed(key) = resume(keyMap.get(key).getOrElse { false })
+        def mousePos() = resume(NULL_VECTOR)
+      }
+      val msg = "Map " ++ show(keyMap.keys()) ++ " " ++ show(keyMap.values) ++ ".wasdDirection() = "
+                ++ show(calculated) ++ ", but expected " ++ show(expected) 
+      assertTrue(calculated == expected, msg)
+    }
+    assertV(NULL_VECTOR)
+    keyMap.update("w", true)
+    assertV(Vec2d(0.0, -1.0))
+    keyMap.update("s", true)
+    assertV(NULL_VECTOR)
+    keyMap.update("a", true)
+    assertV(Vec2d(-1.0, 0.0))
+    keyMap.update("w", false)
+    assertV(Vec2d(-1.0 / sqrt(2.0), 1.0 / sqrt(2.0)))
+    keyMap.update("s", false)
+    assertV(Vec2d(-1.0, 0.0))
+    keyMap.update("d", true)
+    assertV(NULL_VECTOR)
+  }
+
+  test("zombie spawn") {
+    val dt = 12
+    var timer = 10
+    with pseudoHandler
+    try { game.update(dt) }
+    with Timer {
+      def left() = resume(timer)
+      def reset() = {
+        timer = 10
+        resume(())
+      }
+      def change(by) = {
+        timer = timer + by
+        resume(())
+      }
+    }
+
+    assert(timer, 8)
+  }
+
+  test("no zombie spawn") {
+    val dt = 5
+    var timer = 8
+    with pseudoHandler
+    try { game.update(dt) }
+    with Timer {
+      def left() = resume(timer)
+      def reset() = {
+        timer = 10
+        resume(())
+      }
+      def change(by) = {
+        timer = timer + by
+        resume(())
+      }
+    }
+
+    assert(timer, 3)
+  }
+
+  test("zombie shooting") {
+    val SHOT_ZOMBIE_HITBOX = Simple(Rect(Vec2d(50.0, 50.0), 10.0, 10.0, Black()))
+    val SHOT_ZOMBIE = Zombie(
+      SHOT_ZOMBIE_HITBOX,
+      Vec2d(1.0, 1.0)
+    )
+    val ALIVE_HITBOX = Simple(Rect(Vec2d(100.0, 100.0), 10.0, 10.0, Black()))
+    val ALIVE = Zombie(
+      ALIVE_HITBOX,
+      Vec2d(1.0, 1.0)
+    )
+    val SHOT_HITBOX = Simple(Rect(Vec2d(40.0, 40.0), 20.0, 20.0, Black()))
+    val SHOT = Shot(
+      SHOT_HITBOX,
+      Vec2d(1.0, 1.0)
+    )
+
+    assertTrue(
+      SHOT_ZOMBIE_HITBOX.collides(SHOT_HITBOX),
+      "Shot should collide with overlapping zombie"
+    )
+
+    assertFalse(
+      ALIVE_HITBOX.collides(SHOT_HITBOX),
+      "Shot should not collide with non-overlapping zombie"
+    )
+    
+    val remaining = shooting([SHOT_ZOMBIE, ALIVE, SHOT])
+
+    assertTrue(
+      remaining.contains(ALIVE){(a, b) => a.equals(b)},
+      "Zombie that was not shot is dead"
+    )
+    assertFalse(
+      remaining.contains(SHOT_ZOMBIE){(a, b) => a.equals(b)},
+      "Shot zombie is not dead"
+    )
+    assertFalse(
+      remaining.contains(SHOT){(a, b) => a.equals(b)},
+      "Shot that hit zombie is still in the game"
+    )
+  }
+}

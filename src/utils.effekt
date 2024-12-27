@@ -1,0 +1,36 @@
+module utils
+
+effect random(): Double
+
+def min(x: Double, y: Double): Double = if (x < y) x else y
+
+/// Can return None if the given lists are not of the same length
+/// or if the probabilities do not add up to 1
+def choose[T](chooseFrom: List[T], probabilities: List[Double]): Option[T] / random = {
+  val thresholds = probabilities.foldRight([]) { (prob, ts) =>
+    val lastThreshold = ts.headOption().getOrElse{1.0}
+    Cons((lastThreshold - prob), ts)
+  }
+  val random = do random()
+  def p(t: Double): Bool = random > t
+  val chosenIndex = thresholds.reverse.findIndex(p)
+  
+  val chosen = default[OutOfBounds, Option[T]] { None() } 
+    { Some(chooseFrom.reverse.get(chosenIndex)) }
+  chosen
+}
+
+def contains[T](list: List[T], elem: T) { equals: (T, T) => Bool }: Bool = list match {
+  case Cons(x, rest) => x.equals(elem) || rest.contains(elem) {equals}
+  case Nil() => false
+}
+
+def findIndex[T](list: List[T], predicate: T => Bool at {}): Int = {
+  def go(list: List[T], i: Int): Int = list match {
+    case Cons(x, rest) => if (predicate(x)) i else go(rest, i + 1)
+    case Nil() => -1
+  }
+  go(list, 0)
+}
+
+def almostEqual(d1: Double, d2: Double, epsilon: Double): Bool = abs(d1 - d2) < epsilon

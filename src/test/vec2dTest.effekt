@@ -1,0 +1,71 @@
+module vec2dTest
+
+import test
+import src/vec2d
+import src/utils
+
+def vec2dSuite() = suite("vec2d") {
+  test("vector arithmetic") {
+    val v = 2 * (Vec2d(2.0, 3.0) + Vec2d(1.0, -1.0))
+    assertEqual(v, Vec2d(6.0, 4.0))
+  }
+
+  test("vector normalizing") {
+    val v = Vec2d(3.0, 4.0)
+    //length = sqrt(9 + 16) = 5
+    assertEqual(normalize(v), Vec2d(0.6, 0.8))
+  }
+
+  test("angle calculation") {
+    val vectors = [
+      Vec2d(1.0, 0.0),
+      Vec2d(1.0, 1.0),
+      Vec2d(0.001, 1.0),
+      Vec2d(-1.0, 1.0),
+      Vec2d(-1.0, 0.0),
+      Vec2d(-1.0, -1.0),
+      Vec2d(0.001, -1.0),
+      Vec2d(1.0, -1.0)
+    ]
+
+    var expectedAngle = 0.0
+    vectors.foreach { v =>
+      assertEqual(angleClockwise(v), expectedAngle) 
+        { (d1, d2) => almostEqual(d1, d2, 0.001) } { d => genericShow[Double](d) }
+      expectedAngle = expectedAngle + 0.25 * PI
+    }
+  }
+
+  test("rotate around origin") {
+    val expected = Vec2d(1.0, 0.0)
+
+    val vectors = [
+      expected,
+      Vec2d(1.0, 1.0),
+      Vec2d(0.001, 1.0),
+      Vec2d(-1.0, 1.0),
+      Vec2d(-1.0, 0.0),
+      Vec2d(-1.0, -1.0),
+      Vec2d(0.001, -1.0),
+      Vec2d(1.0, -1.0)
+    ].map { v => v.normalize() }
+
+    var rotationAngle = 0.0
+
+    vectors.foreach { v =>
+      assertEqual(v.rotate(rotationAngle), expected) 
+        { vec2d::infixEq } { vec2d::show }
+      rotationAngle = rotationAngle - 0.25 * PI 
+    }
+  }
+
+  test("rotate relative") {
+    val toRotate = Vec2d(2.0, 2.0)
+    val angle = 0.5 * PI
+    val relativeTo = Vec2d(1.0, 1.0)
+    val expected = Vec2d(0.0, 2.0)
+
+    assertEqual(toRotate.rotate(angle, relativeTo), expected) 
+      { vec2d::infixEq } { vec2d::show }
+  }
+}

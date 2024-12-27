@@ -1,0 +1,174 @@
+module game
+
+import src/ffi
+import src/utils
+import src/vec2d
+import src/shapes/manipulated
+import src/shapes/simple
+
+interface Canvas {
+  def draw(drawable: ManipulatedDrawable): Unit
+  def clear(): Unit
+}
+
+interface Input {
+  def isPressed(key: String): Bool
+  def mousePos(): Vec2d
+}
+
+interface Screen {
+  def width(): Double
+  def height(): Double
+}
+
+interface Timer {
+  def left(): Int
+  def reset(): Unit
+  def change(by: Int): Unit
+}
+
+type GameObject {
+  Shot(drawable: ManipulatedDrawable, movementVector: Vec2d)
+  Zombie(drawable: ManipulatedDrawable, movementVector: Vec2d)
+}
+
+def getCenter(object: GameObject): Vec2d = object match {
+  case Shot(hitbox, _) => hitbox.getCenter()
+  case Zombie(hitbox, _) => hitbox.getCenter()
+}
+
+def getHitbox(object: GameObject): ManipulatedDrawable = object match {
+  case Shot(hitbox, _) => hitbox
+  case Zombie(hitbox, _) => hitbox
+}
+
+record Player(drawable: SimpleDrawable, gun: SimpleDrawable, speed: Double)
+
+record GameState(player: Player, objects: List[GameObject])
+
+def addObject(game: GameState, gameObject: GameObject): GameState = 
+  GameState(game.player, Cons(gameObject, game.objects))
+
+type Side {
+  Top()
+  Right()
+  Bottom()
+  Left()
+}
+
+val SIDES = [Top(), Right(), Bottom(), Left()]
+
+def spawnZombie(game: GameState): GameObject / { Screen, random } = {
+  val w = do width()
+  val h = do height()
+  val totalScreenEdge = 2.0 * w + 2.0 * h
+  val sideProbs = [w, h, w, h].map {side => side / totalScreenEdge}
+  val spawnSide = SIDES.choose(sideProbs).getOrElse{Right()}
+  val r = do random()
+  val zombiePos = spawnSide match {
+    case Right() => Vec2d(w, r * h)
+    case Bottom() => Vec2d(r * w, h)
+    case Left() => Vec2d(0.0, r * h)
+    case Top() => Vec2d(r * w, 0.0)
+  }
+  val player = game.player
+  val zombieSize = h / 15.0
+  val zombie = Zombie(Simple(Circle(zombiePos, zombieSize, Black())), Vec2d(0.3, 0.0))
+  zombie
+}
+
+def move(gameObject: GameObject, dt: Int): GameObject = gameObject match {
+  case Shot(hitbox, movementVector) => 
+    Shot(hitbox.move(movementVector * dt), movementVector)
+  case Zombie(hitbox, movementVector) =>
+    Zombie(hitbox.move(movementVector * dt), movementVector)
+}
+
+def wasdDirection(): Vec2d / Input = {
+  val wPressed = do isPressed("w") || do isPressed("W")
+  val aPressed = do isPressed("a") || do isPressed("A")
+  val sPressed = do isPressed("s") || do isPressed("S")
+  val dPressed = do isPressed("d") || do isPressed("D")
+  val xDirection = aPressed.toDouble.neg + dPressed.toDouble
+  val yDirection = wPressed.toDouble.neg + sPressed.toDouble
+  Vec2d(xDirection, yDirection).normalize()
+}
+
+def move(player: Player, dt: Int): Player / Input = {
+  val movement = 
+    player.speed * dt.toDouble * wasdDirection()
+  Player(
+    player.drawable.move(movement), 
+    player.gun.move(movement), 
+    player.speed
+  )
+}
+
+def shooting(objects: List[GameObject]): List[GameObject] = {
+  val (shots, zombies) = objects.partition {
+    case Shot(_, _) => true
+    case Zombie(_, _) => false
+  }
+
+  val (shotsThatHit, remainingShots) = shots.partition {
+    case Shot(sHitbox, _) =>
+      zombies.any {
+        case Zombie(zHitbox, _) => sHitbox.collides(zHitbox)
+        case _ => false
+      }
+    case _ => false
+  }
+
+  val (dead, alive) = zombies.partition {
+    case Zombie(zHitbox, _) =>
+      shotsThatHit.any {
+        case Shot(sHitbox, _) => zHitbox.collides(sHitbox)
+        case _ => false
+      }
+    case _              => false
+  }
+
+  alive.append(remainingShots)
+}
+
+def update(game: GameState, dt: Int): GameState / { Input, random, Screen, Timer } = {
+  val player = game.player
+  val movedPlayer = player.move(dt)
+  val objects = game.objects
+
+  val timeLeftToSpawn = do left() - dt
+  val shouldSpawn = timeLeftToSpawn < 0
+  val spawnedZombie = if (shouldSpawn) {
+    do reset()
+    do change(timeLeftToSpawn)
+    [spawnZombie(game)] 
+  } else {
+    do change(dt.neg)
+    []
+  }
+
+  val remainingObjects = shooting(spawnedZombie.append(game.objects))
+
+  val movedObjects = remainingObjects.map {
+    case Zombie(h, m) =>
+      val zombieCenter = h.getCenter()
+      val zombiePlayerVec = player.drawable.getCenter() - zombieCenter
+      val missingAngle = angleClockwise(zombiePlayerVec) - angleClockwise(m)
+      val newHitbox = Rotate(h, missingAngle, None()).collapseRotations()
+      Zombie(newHitbox, m.rotate(missingAngle)).move(dt)
+    case o => o.move(dt)
+  }
+  GameState(movedPlayer, movedObjects)
+}
+
+def render(game: GameState): Unit / { Canvas, Input } = {
+  val gunAngle = 
+    angleClockwise(do mousePos() - game.player.drawable.getCenter())
+  do clear()
+  do draw(Rotate(
+    Compose(Simple(game.player.drawable),
+    Simple(game.player.gun)), 
+    gunAngle, None()
+  ))
+  game.objects.foreach { o => do draw(o.getHitbox()) }
+}

@@ -1,0 +1,43 @@
+module shapes/simple
+
+import src/shapes/hitbox
+import src/vec2d
+
+type Color {
+  Green()
+  Red()
+  Black()
+}
+
+def show(color: Color): String = color match {
+  case Green() => "green"
+  case Red()   => "red"
+  case Black() => "black"
+}
+
+type SimpleDrawable {
+  Rect(upperLeft: Vec2d, width: Double, height: Double, color: Color)
+  Circle(center: Vec2d, radius: Double, color: Color)
+}
+
+def changeColor(drawable: SimpleDrawable, to: Color): SimpleDrawable = drawable match {
+  case Rect(uL, w, h, _) => Rect(uL, w, h, to)
+  case Circle(c, r, _) => Circle(c, r, to)
+}
+
+def getCenter(drawable: SimpleDrawable): Vec2d = drawable match {
+  case Rect(upperLeft, width, height, _) => 
+    upperLeft + Vec2d(0.5 * width, 0.5 * height)
+  case Circle(center, _, _) => center
+}
+
+def move(drawable: SimpleDrawable, dVec: Vec2d): SimpleDrawable = drawable match {
+  case Rect(upperLeft, w, h, c) => Rect(upperLeft + dVec, w, h, c)
+  case Circle(center, r, c) => Circle(center + dVec, r, c)
+}
+
+def toHitbox(d: SimpleDrawable): Hitbox = d match {
+  case Rect(uL, w, h, _) => 
+    HRect(uL, uL + Vec2d(w, 0.0), uL + Vec2d(w, h), uL + Vec2d(0.0, h))
+  case Circle(center, r, _) => HCircle(center, r)
+}

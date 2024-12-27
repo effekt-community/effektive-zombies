@@ -1,5 +1,7 @@
 module vec2d
 
+import src/utils
+
 record Vec2d(x: Double, y: Double)
 
 val NULL_VECTOR = Vec2d(0.0, 0.0)
@@ -10,7 +12,9 @@ def infixAdd(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x + vec2.x, vec1.y + 
 
 def infixSub(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x - vec2.x, vec1.y - vec2.y)
 
-def length(vec: Vec2d): Double = sqrt(vec.x * vec.x + vec.y * vec.y)
+def dot(vec1: Vec2d, vec2: Vec2d): Double = vec1.x * vec2.x + vec1.y * vec2.y
+
+def length(vec: Vec2d): Double = sqrt(vec.dot(vec))
 
 def normalize(vec: Vec2d): Vec2d = {
   val length = vec.length()
@@ -25,8 +29,6 @@ def infixMul(vec: Vec2d, scalar: Double) = scalar * vec
 
 def infixMul(scalar: Double, vec: Vec2d): Vec2d = Vec2d(scalar * vec.x, scalar * vec.y)
 
-def almostEqual(d1: Double, d2: Double, epsilon: Double): Bool = (d1 - d2) < epsilon
-
 def infixEq(vec1: Vec2d, vec2: Vec2d): Bool = 
   vec1.x.almostEqual(vec2.x, 0.001) && vec1.y.almostEqual(vec2.y, 0.001)
 
@@ -35,6 +37,12 @@ def infixGt(vec1: Vec2d, vec2: Vec2d): Bool =
 
 def infixLt(vec1: Vec2d, vec2: Vec2d): Bool =
   (vec1.x < vec2.x) && (vec1.y < vec2.y)
+
+def infixGte(vec1: Vec2d, vec2: Vec2d): Bool =
+  (vec1 > vec2) || (vec1 == vec2)
+
+def infixLte(vec1: Vec2d, vec2: Vec2d): Bool =
+  (vec1 < vec2) || (vec1 == vec2)
 
 def show(vec: Vec2d) = "Vec2d(" ++ show(vec.x) ++ ", " ++ show(vec.y) ++ ")"
 

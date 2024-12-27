@@ -1,0 +1,54 @@
+module shapes/manipulated
+
+import src/shapes/hitbox
+import src/shapes/simple
+import src/vec2d
+
+type ManipulatedDrawable {
+  Simple(drawable: SimpleDrawable)
+  Rotate(inner: ManipulatedDrawable, rotation: Double, relativeTo: Option[Vec2d])
+  Compose(first: ManipulatedDrawable, second: ManipulatedDrawable)
+}
+
+def getCenter(drawable: ManipulatedDrawable): Vec2d = drawable match {
+  case Simple(inner) => inner.getCenter()
+  case Rotate(inner, rotation, relativeTo) =>
+    val innerCenter = inner.getCenter()
+    val relat = relativeTo.getOrElse { () => innerCenter }
+    innerCenter.rotate(rotation, relat)
+  case Compose(first, second) => first.getCenter()
+}
+
+def collapseRotations(d: ManipulatedDrawable): ManipulatedDrawable = d match {
+  case Simple(inner) => Simple(inner)
+  case Rotate(Rotate(inner, innerRotation, innerRelative), rotation, relativeTo) =>
+    if (innerRelative.equals(relativeTo)) 
+      Rotate(inner.collapseRotations(), innerRotation + rotation, relativeTo)
+    else 
+      Rotate(
+        Rotate(inner, innerRotation, innerRelative).collapseRotations(), 
+        rotation, relativeTo
+      )
+  case Rotate(inner, rotation, relativeTo) => 
+    Rotate(inner.collapseRotations(), rotation, relativeTo)
+  case Compose(first, second) => 
+    Compose(first.collapseRotations(), second.collapseRotations())
+}
+
+def move(drawable: ManipulatedDrawable, dVec: Vec2d): ManipulatedDrawable = drawable match {
+  case Simple(inner) => Simple(inner.move(dVec))
+  case Rotate(inner, angle, relativeTo) => 
+    Rotate(inner.move(dVec), angle, relativeTo.map{v => v + dVec})
+  case Compose(first, second) => Compose(first.move(dVec), second.move(dVec))
+}
+
+def toHitbox(d: ManipulatedDrawable): Hitbox = d match {
+  case Simple(inner) => inner.toHitbox()
+  case Rotate(inner, rotation, relativeTo) =>
+    inner.toHitbox().rotate(rotation, relativeTo)
+  case Compose(first, second) =>
+    HCompose(first.toHitbox(), second.toHitbox())
+}
+
+def collides(d1: ManipulatedDrawable, d2: ManipulatedDrawable): Bool =
+  collides(d1.toHitbox(), d2.toHitbox())

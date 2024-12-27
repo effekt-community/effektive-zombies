@@ -1,0 +1,228 @@
+module shapesTest
+
+import test
+import mutable/map
+import src/vec2d
+import src/shapes/hitbox
+import src/shapes/manipulated
+import src/shapes/simple
+
+def shapesSuite() = suite("shapes") {
+  val inner = Simple(Circle(fromInt(1, 1), 1.0, Red()))
+
+  test("simpleCollapse") {
+    val simpleCollapse = Rotate(
+      Rotate(
+        inner,
+        0.5 * PI,
+        None()
+      ),
+      0.5 * PI,
+      None()
+    )
+
+    val expected = Rotate(
+      inner,
+      PI,
+      None()
+    )
+
+    assertEqual(simpleCollapse.collapseRotations(), expected)
+  }
+
+  test("no collapse") {
+    val noCollapse = Rotate(
+      Rotate(
+        inner,
+        0.5 * PI,
+        Some(Vec2d(1.0, 1.0))
+      ),
+      0.5 * PI,
+      Some(Vec2d(0.5, 0.5))
+    )
+
+    assertEqual(noCollapse.collapseRotations(), noCollapse)
+  }
+
+  test("complex collapse") {
+    def rot(d: ManipulatedDrawable, angle: Double): ManipulatedDrawable = 
+      Rotate(d, angle, None())
+
+    val complexCollapse = Compose(inner.rot(PI).rot(PI), inner).rot(PI).rot(0.5 * PI)
+
+    val complexCollapseExpected = Rotate(
+      Compose(
+        Rotate(
+          inner,
+          2.0 * PI,
+          None()
+        ),
+        inner
+      ),
+      1.5 * PI,
+      None()
+    )
+
+    assertEqual(complexCollapse.collapseRotations(), complexCollapseExpected)
+  }
+
+  test("same center after rotating around ones own center") {
+    val rect = Rect(Vec2d(10.0, 10.0), 10.0, 5.0, Red())
+    val rectPointingUp = Rotate(
+      Simple(rect), 
+      0.5 * PI, None()
+    )
+    assertEqual(rect.getCenter(), rectPointingUp.getCenter()) 
+      { vec2d::infixEq } { vec2d::show }
+  }
+
+  test("rectangle-hitbox center") {
+    val rect = HRect(
+      fromInt(1, 1), fromInt(4, 2), 
+      Vec2d(4.0 - 2.0 / 3.0, 4.0), Vec2d(1.0 / 3.0, 3.0) 
+    )
+
+    val expected = Vec2d(2.0 + 1.0 / 6.0, 2.5)
+
+    assertEqual(rect.getCenter(), expected) { vec2d::infixEq } { vec2d::show }
+  }
+
+  test("rotated hitbox conversion") {
+    val angle = 0.25 * PI
+    val hitbox = Rotate(
+      Simple(Rect(fromInt(3, 3), 6.0, 8.0, Red())),
+      0.25 * PI,
+      None()  
+    )
+
+    val relat = fromInt(6, 7)
+    val expected = HRect(
+      fromInt(9, 11).rotate(angle, relat),
+      fromInt(3, 11).rotate(angle, relat),
+      fromInt(3, 3).rotate(angle, relat),
+      fromInt(9, 3).rotate(angle, relat)
+    )
+
+    assertEqual(hitbox.toHitbox(), expected) 
+      { hitbox::infixEq } { h => genericShow(h) }
+  }
+
+  test("moving rotated shape") {
+    val rect = Rect(Vec2d(10.0, 10.0), 10.0, 5.0, Red())
+    val rectPointingUp = Rotate(
+      Simple(rect), 
+      0.5 * PI, None()
+    )
+    val movedRect = rectPointingUp.move(Vec2d(5.0, 5.0))
+    val expected = Rotate(
+      Simple(Rect(Vec2d(15.0, 15.0), 10.0, 5.0, Red())),
+      0.5 * PI, None()
+    )
+    assertEqual(movedRect, expected)
+  }
+
+  test("point inside rect") {
+    val point = Vec2d(0.0, -1.0)
+    val hitbox = Rect(NULL_VECTOR, 3.0, 2.0, Red()).toHitbox()
+      .rotate(1.25 * PI, Some(NULL_VECTOR))
+    val msg = "Point " ++ show(point) ++ " should be inside " ++ genericShow(hitbox)
+    assertTrue(point.isInside(hitbox), msg)
+  }
+  
+  test("point barely outside two circles") {
+    val point = Vec2d(0.0, 0.0)
+    val hitbox = HCompose(
+      HCircle(Vec2d(-1.0, -1.0), 1.4),
+      HCircle(Vec2d(1.0, 1.0), 1.4)
+    )
+    
+    val msg = "Point " ++ show(point) 
+              ++ " should not be inside " ++ genericShow(hitbox)
+    assertFalse(point.isInside(hitbox), msg)
+  }
+
+  test("rect/circle collision") {
+    val rectHitbox = HRect(
+      Vec2d(0.0, 0.0),
+      Vec2d(1.0, -2.0),
+      Vec2d(-2.0, -5.0),
+      Vec2d(-4.0, -3.0)
+    )
+    val circleHitbox = HCircle(
+      Vec2d(0.0, -4.0),
+      1.0
+    )
+
+    assertTrue(rectHitbox.collides(circleHitbox))
+    assertTrue(circleHitbox.collides(rectHitbox))
+  }
+
+  test("edge inside circle") {
+    val edge = (fromInt(0, 0), fromInt(2, 2))
+
+    assertTrue(edge.isInsideCircle(fromInt(2, 0), 1.7)) 
+  }
+
+  test("edge barely outside circle") {
+    val edge = (fromInt(0, 5), fromInt(3, -2))
+    
+    assertTrue(edge.isInsideCircle(fromInt(2, 0), 1.7))
+  }
+
+  test("rect/circle no collision") {
+    val hRect = Rotate(
+      Simple(Rect(fromInt(28, 36), 5.0, 17.0, Black())),
+      1.0,
+      Some(Vec2d(22.0, 22.5))
+    )
+
+    val hCircle = Rotate(
+      Simple(Circle(fromInt(40, 19), 6.0, Red())),
+      3.0,
+      None()
+    )
+
+    assertFalse(hRect.collides(hCircle))
+    assertFalse(hCircle.collides(hRect))
+  }
+
+
+  test("rect/rect no collision") {
+    val c11 = fromInt(40, 40)
+    val c12 = fromInt(60, 40)
+    val c13 = fromInt(60, 60)
+    val c14 = fromInt(40, 60)
+
+    val hitboxOne: Hitbox = HRect(
+      c11, c12, 
+      c13, c14
+    )
+    val hitboxTwo: Hitbox = HRect(
+      fromInt(100, 100), fromInt(110, 100),
+      fromInt(110, 110), fromInt(100, 110)
+    )
+
+    val hitboxOneCorners: List[Vec2d] = [
+      c11, c12,
+      c13, c14
+    ]
+
+    hitboxOneCorners.foreach { c =>
+      assertFalse(
+        c.isInside(hitboxTwo),
+        show(c) ++ " should not be inside " ++ genericShow(hitboxTwo)
+      )
+    }
+
+    assertFalse(hitboxOne.collides(hitboxTwo))
+    assertFalse(hitboxTwo.collides(hitboxOne))
+  }
+
+  test("rect/rect collision") {
+    val hitboxOne = Rect(Vec2d(40.0, 40.0), 20.0, 20.0, Black()).toHitbox()
+    val hitboxTwo = Rect(Vec2d(50.0, 50.0), 10.0, 10.0, Black()).toHitbox()
+
+    assertTrue(hitboxOne.collides(hitboxTwo))
+    assertTrue(hitboxTwo.collides(hitboxOne))
+  }
+}

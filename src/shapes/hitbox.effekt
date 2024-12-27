@@ -1,0 +1,101 @@
+module shapes/hitbox
+
+import src/vec2d
+import src/utils
+
+type Hitbox {
+  //c1, c3 and c2, c4 are opposite corners
+  HRect(c1: Vec2d, c2: Vec2d, c3: Vec2d, c4: Vec2d)
+  HCircle(center: Vec2d, radius: Double)
+  HCompose(h1: Hitbox, h2: Hitbox)
+}
+
+def infixEq(h1: Hitbox, h2: Hitbox): Bool = (h1, h2) match {
+  case (HRect(c11, c12, c13, c14), HRect(c21, c22, c23, c24)) =>
+    //check if edges match to each other in some permutation
+    val (c1Matches, _) = [c11, c12, c13, c14].foldRight((Nil(), [c21, c22, c23, c24])) 
+    { (c1, z) =>
+        val (matches, c2Left) = z 
+        val (c1Matches, rest) = c2Left.partition { c2 => c1 == c2 }
+        (Cons(c1Matches, matches), rest)
+    }
+    c1Matches.all { matches => matches.isEmpty().not() }
+  case (HCircle(center1, radius1), HCircle(center2, radius2)) =>
+    (center1 == center2) && (almostEqual(radius1, radius2, 0.0001))
+  case (HCompose(first1, second1), HCompose(first2, second2)) =>
+    (first1 == first2) && (second1 == second2)
+  case _ => false
+}
+
+def getCenter(h: Hitbox): Vec2d = h match {
+  case HRect(c1, c2, c3, c4) => c1 + (c3 - c1) * 0.5
+  case HCircle(center, _) => center
+  case HCompose(h1, h2) => h1.getCenter()
+}
+
+def rotate(h: Hitbox, angle: Double, relativeTo: Option[Vec2d]): Hitbox = {
+  val relat = relativeTo.getOrElse { h.getCenter() }
+  h match {
+    case HRect(c1, c2, c3, c4) =>
+      HRect(
+        c1.rotate(angle, relat), 
+        c2.rotate(angle, relat),
+        c3.rotate(angle, relat),
+        c4.rotate(angle, relat)
+      )
+    case HCircle(center, radius) => HCircle(center.rotate(angle, relat), radius)
+    case HCompose(h1, h2) => 
+      HCompose(h1.rotate(angle, relativeTo), h2.rotate(angle, relativeTo))
+  }
+}
+
+def isInside(point: Vec2d, hitbox: Hitbox): Bool = hitbox match {
+  case HRect(c1, c2, c3, c4) =>
+    //make rect axis aligned and c1 the upperLeft corner
+    val angle = (c2 - c1).angleClockwise().neg()
+    val upperLeft = c1.rotate(angle, NULL_VECTOR)
+    val lowerRight = c3.rotate(angle, NULL_VECTOR)
+    val rotatedPoint = point.rotate(angle, NULL_VECTOR)
+    val result = (rotatedPoint >= upperLeft) && (rotatedPoint <= lowerRight)
+    result
+  case HCircle(center, r) => length(point - center) <= r
+  case HCompose(h1, h2) => point.isInside(h1) || point.isInside(h2)
+}
+
+//https://stackoverflow.com/a/1079478/15982248
+def isInsideCircle(edge: (Vec2d, Vec2d), circleCenter: Vec2d, circleRadius: Double): Bool = {
+  val (start, end) = edge
+  val edgeV = end - start
+  val startToCenter = circleCenter - start
+  val k = dot(startToCenter, edgeV) / dot(edgeV, edgeV)
+  val clampK = max(0.0, min(1.0, k))
+  val projected = clampK * edgeV + start
+  length(projected - circleCenter) <= circleRadius 
+}
+
+def collides(h1: Hitbox, h2: Hitbox): Bool = h1 match {
+  case HRect(c11, c12, c13, c14) => h2 match {
+    case HRect(c21, c22, c23, c24) =>
+      [c11, c12, c13, c14].any { p =>
+        p.isInside(h2)
+      } || [c21, c22, c23, c24].any { p => p.isInside(h1) }
+    case _ => h2.collides(h1)
+  }
+  //https://stackoverflow.com/a/402019/15982248
+  case HCircle(center, r) => h2 match {
+    case HRect(c1, c2, c3, c4) =>
+      val edges = [
+        (c1, c2),
+        (c2, c3),
+        (c3, c4),
+        (c4, c1)
+      ]
+      edges.any { e => e.isInsideCircle(center, r) } || center.isInside(h2)
+    case HCircle(center2, r2) =>
+      length(center - center2) <= max(r, r2)
+    case HCompose(first, second) =>
+      collides(h1, first) || collides(h1, second)
+  }
+  case HCompose(first, second) =>
+    collides(first, h2) || collides(second, h2)
+}
