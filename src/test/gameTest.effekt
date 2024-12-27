@@ -11,7 +11,7 @@ import src/shapes/simple
 def gameSuite() = suite("game") {
   val player = Player(
     Circle(Vec2d(30.0, 30.0), 50.0, Green()),
-    Rect(Vec2d(80.0, 25.0), 10.0, 10.0, Black()), 1.0
+    Rect(Vec2d(80.0, 25.0), 10.0, 10.0, Black()), 1, 1.0
   )
   val game = GameState(player, [])
 

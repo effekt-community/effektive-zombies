@@ -92,7 +92,7 @@ def collides(h1: Hitbox, h2: Hitbox): Bool = h1 match {
       ]
       edges.any { e => e.isInsideCircle(center, r) } || center.isInside(h2)
     case HCircle(center2, r2) =>
-      length(center - center2) <= max(r, r2)
+      length(center - center2) <= r + r2
     case HCompose(first, second) =>
       collides(h1, first) || collides(h1, second)
   }

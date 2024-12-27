@@ -1,0 +1,46 @@
+module text
+
+import src/shapes/simple
+import src/vec2d
+
+type Font {
+  Serif()
+}
+
+def show(font: Font): String = font match {
+  case Serif() => "serif"
+}
+
+type Alignment {
+  Left()
+  Right()
+  Center()
+}
+
+def show(alignment: Alignment): String = alignment match {
+  case Left() => "left"
+  case Right() => "right"
+  case Center() => "center"
+}
+
+type Baseline {
+  Top()
+  Middle()
+  Bottom()
+}
+
+def show(baseline: Baseline): String = baseline match {
+  case Top() => "top"
+  case Middle() => "middle"
+  case Bottom() => "bottom"
+}
+
+record Text(
+  text: String,
+  position: Vec2d,
+  fontSizePX: Int,
+  fontType: Font,
+  alignment: Alignment,
+  baseline: Baseline,
+  color: Color
+)

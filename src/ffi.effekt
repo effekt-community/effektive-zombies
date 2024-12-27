@@ -64,6 +64,18 @@ extern io def clear(canvas: Node): Unit =
            h = ${canvas}.height;
            ctx.clearRect(0, 0, w, h)"""
 
+extern io def drawText(
+  canvas: Node, text: String,
+  x: Double, y: Double, font: String, 
+  alignment: String, baseline: String, color: String
+): Unit =
+  jsWeb """ctx = ${canvas}.getContext("2d");
+           ctx.font = ${font};
+           ctx.textAlign = ${alignment};
+           ctx.textBaseline = ${baseline};
+           ctx.fillStyle = ${color};
+           ctx.fillText(${text}, ${x}, ${y})"""
+
 //Sets up the transformation matrix to rotate all later drawn shapes clockwise by the given angle 
 //relative to the given coordinates
 extern io def setupRotation(canvas: Node, angle: Double, relativeToX: Double, relativeToY: Double): Unit =

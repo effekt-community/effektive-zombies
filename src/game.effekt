@@ -1,6 +1,7 @@
 module game
 
 import src/ffi
+import src/text
 import src/utils
 import src/vec2d
 import src/shapes/manipulated
@@ -8,6 +9,7 @@ import src/shapes/simple
 
 interface Canvas {
   def draw(drawable: ManipulatedDrawable): Unit
+  def write(text: Text): Unit
   def clear(): Unit
 }
 
@@ -42,7 +44,12 @@ def getHitbox(object: GameObject): ManipulatedDrawable = object match {
   case Zombie(hitbox, _) => hitbox
 }
 
-record Player(drawable: SimpleDrawable, gun: SimpleDrawable, speed: Double)
+record Player(drawable: SimpleDrawable, gun: SimpleDrawable, health: Int, speed: Double)
+
+def isAlive(player: Player): Bool = player.health > 0
+
+def changeHealth(player: Player, by: Int): Player = 
+  Player(player.drawable, player.gun, player.health + by, player.speed)
 
 record GameState(player: Player, objects: List[GameObject])
 
@@ -99,7 +106,8 @@ def move(player: Player, dt: Int): Player / Input = {
     player.speed * dt.toDouble * wasdDirection()
   Player(
     player.drawable.move(movement), 
-    player.gun.move(movement), 
+    player.gun.move(movement),
+    player.health,
     player.speed
   )
 }
@@ -147,7 +155,14 @@ def update(game: GameState, dt: Int): GameState / { Input, random, Screen, Timer
     []
   }
 
-  val remainingObjects = shooting(spawnedZombie.append(game.objects))
+  val remainingAfterShooting = shooting(spawnedZombie.append(game.objects))
+
+  val (damagingZombies, remainingObjects) = remainingAfterShooting.partition {
+    case Zombie(hitbox, _) => hitbox.collides(Simple(player.drawable))
+    case _ => false
+  }
+
+  val playerHealthLoss = damagingZombies.size
 
   val movedObjects = remainingObjects.map {
     case Zombie(h, m) =>
@@ -158,7 +173,7 @@ def update(game: GameState, dt: Int): GameState / { Input, random, Screen, Timer
       Zombie(newHitbox, m.rotate(missingAngle)).move(dt)
     case o => o.move(dt)
   }
-  GameState(movedPlayer, movedObjects)
+  GameState(movedPlayer.changeHealth(playerHealthLoss.neg), movedObjects)
 }
 
 def render(game: GameState): Unit / { Canvas, Input } = {
@@ -171,4 +186,25 @@ def render(game: GameState): Unit / { Canvas, Input } = {
     gunAngle, None()
   ))
   game.objects.foreach { o => do draw(o.getHitbox()) }
+}
+
+def renderDeathScreen(): Unit / { Canvas, Screen } = {
+  val w = do width()
+  val h = do height()
+  val center = Vec2d(w / 2.0, h / 2.0)
+
+  val background = Simple(Rect(NULL_VECTOR, w, h, Black()))
+
+  val YOU_DIED = Text(
+    "You Died",
+    center - fromInt(0, 100),
+    48,
+    Serif(),
+    Center(),
+    Bottom(),
+    Red()
+  )
+
+  do draw(background)
+  do write(YOU_DIED)
 }

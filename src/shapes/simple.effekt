@@ -7,12 +7,14 @@ type Color {
   Green()
   Red()
   Black()
+  White()
 }
 
 def show(color: Color): String = color match {
   case Green() => "green"
   case Red()   => "red"
   case Black() => "black"
+  case White() => "white"
 }
 
 type SimpleDrawable {
@@ -29,6 +31,12 @@ def getCenter(drawable: SimpleDrawable): Vec2d = drawable match {
   case Rect(upperLeft, width, height, _) => 
     upperLeft + Vec2d(0.5 * width, 0.5 * height)
   case Circle(center, _, _) => center
+}
+
+def centerAt(drawable: SimpleDrawable, center: Vec2d): SimpleDrawable = drawable match {
+  case Rect(_, width, height, color) => 
+    Rect(center - Vec2d(width / 2.0, height / 2.0), width, height, color)
+  case Circle(_, radius, color) => Circle(center, radius, color)
 }
 
 def move(drawable: SimpleDrawable, dVec: Vec2d): SimpleDrawable = drawable match {
