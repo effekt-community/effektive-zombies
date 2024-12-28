@@ -35,10 +35,12 @@ extern io def getButton(event: Event): Int =
 extern io def createCanvas(width: Double, height: Double): Node =
   jsWeb """(function(){
   canvas = document.createElement("canvas");
-  canvas.setAttribute("id", "canvas")
-  canvas.setAttribute("width", ${width})
-  canvas.setAttribute("height", ${height})
-  document.body.appendChild(canvas)
+  canvas.id = "canvas";
+  canvas.width = ${width};
+  canvas.height = ${height};
+  //https://stackoverflow.com/a/7782251/15982248
+  canvas.style = "position:absolute;top:0;left:0";
+  document.body.appendChild(canvas);
   return canvas;
   })()
   """

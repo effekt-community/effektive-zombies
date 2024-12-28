@@ -146,12 +146,12 @@ def main(): Unit = {
       if (player.isAlive()) {
         val playerCenter = player.drawable.getCenter()
         val gunAngle = angleClockwise(mousePos.get - playerCenter)
-        val shotDrawable = player.gun.changeColor(Black())
-        val shot = Shot(
-          Rotate(Simple(shotDrawable), gunAngle, Some(playerCenter)),
+        val bulletDrawable = player.gun.changeColor(Black())
+        val bullet = Bullet(
+          Rotate(Simple(bulletDrawable), gunAngle, Some(playerCenter)),
           Vec2d(1.0, 0.0).rotate(gunAngle)
         )
-        game.set(game.get.addObject(shot))
+        game.set(game.get.addObject(bullet))
       } else if (mousePos.get.isInside(RETRY_BUTTON.toHitbox())) {
         game.set(START_GAME)
         lastFrameTimeStamp.set(getTime())

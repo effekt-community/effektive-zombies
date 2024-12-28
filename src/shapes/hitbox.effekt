@@ -68,7 +68,7 @@ def isInsideCircle(edge: (Vec2d, Vec2d), circleCenter: Vec2d, circleRadius: Doub
   val edgeV = end - start
   val startToCenter = circleCenter - start
   val k = dot(startToCenter, edgeV) / dot(edgeV, edgeV)
-  val clampK = max(0.0, min(1.0, k))
+  val clampK = k.clamp(0.0, 1.0)
   val projected = clampK * edgeV + start
   length(projected - circleCenter) <= circleRadius 
 }

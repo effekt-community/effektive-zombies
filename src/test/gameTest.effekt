@@ -106,23 +106,23 @@ def gameSuite() = suite("game") {
       ALIVE_HITBOX,
       Vec2d(1.0, 1.0)
     )
-    val SHOT_HITBOX = Simple(Rect(Vec2d(40.0, 40.0), 20.0, 20.0, Black()))
-    val SHOT = Shot(
-      SHOT_HITBOX,
+    val BULLET_HITBOX = Simple(Rect(Vec2d(40.0, 40.0), 20.0, 20.0, Black()))
+    val BULLET = Bullet(
+      BULLET_HITBOX,
       Vec2d(1.0, 1.0)
     )
 
     assertTrue(
-      SHOT_ZOMBIE_HITBOX.collides(SHOT_HITBOX),
-      "Shot should collide with overlapping zombie"
+      SHOT_ZOMBIE_HITBOX.collides(BULLET_HITBOX),
+      "Bullet should collide with overlapping zombie"
     )
 
     assertFalse(
-      ALIVE_HITBOX.collides(SHOT_HITBOX),
-      "Shot should not collide with non-overlapping zombie"
+      ALIVE_HITBOX.collides(BULLET_HITBOX),
+      "Bullet should not collide with non-overlapping zombie"
     )
     
-    val remaining = shooting([SHOT_ZOMBIE, ALIVE, SHOT])
+    val remaining = shooting([SHOT_ZOMBIE, ALIVE, BULLET])
 
     assertTrue(
       remaining.contains(ALIVE){(a, b) => a.equals(b)},
@@ -133,8 +133,8 @@ def gameSuite() = suite("game") {
       "Shot zombie is not dead"
     )
     assertFalse(
-      remaining.contains(SHOT){(a, b) => a.equals(b)},
-      "Shot that hit zombie is still in the game"
+      remaining.contains(BULLET){(a, b) => a.equals(b)},
+      "Bullet that hit zombie is still in the game"
     )
   }
 }

@@ -23,6 +23,9 @@ interface Screen {
   def height(): Double
 }
 
+def visible(d: ManipulatedDrawable): Bool / Screen = 
+  collides(d, Simple(Rect(NULL_VECTOR, do width(), do height(), Black())))
+
 interface Timer {
   def left(): Int
   def reset(): Unit
@@ -30,17 +33,17 @@ interface Timer {
 }
 
 type GameObject {
-  Shot(drawable: ManipulatedDrawable, movementVector: Vec2d)
+  Bullet(drawable: ManipulatedDrawable, movementVector: Vec2d)
   Zombie(drawable: ManipulatedDrawable, movementVector: Vec2d)
 }
 
 def getCenter(object: GameObject): Vec2d = object match {
-  case Shot(hitbox, _) => hitbox.getCenter()
+  case Bullet(hitbox, _) => hitbox.getCenter()
   case Zombie(hitbox, _) => hitbox.getCenter()
 }
 
 def getHitbox(object: GameObject): ManipulatedDrawable = object match {
-  case Shot(hitbox, _) => hitbox
+  case Bullet(hitbox, _) => hitbox
   case Zombie(hitbox, _) => hitbox
 }
 
@@ -50,6 +53,23 @@ def isAlive(player: Player): Bool = player.health > 0
 
 def changeHealth(player: Player, by: Int): Player = 
   Player(player.drawable, player.gun, player.health + by, player.speed)
+
+def keepInsideScreen(player: Player): Player / Screen = {
+  val screenW = do width()
+  val screenH = do height()
+  val playerCenter = player.drawable.getCenter()
+  val centerInside = Vec2d(
+    playerCenter.x.clamp(0.0, screenW),
+    playerCenter.y.clamp(0.0, screenH)
+  )
+  val adjustment = centerInside - playerCenter
+  Player(
+    player.drawable.move(adjustment), 
+    player.gun.move(adjustment), 
+    player.health,
+    player.speed
+  )
+}
 
 record GameState(player: Player, objects: List[GameObject])
 
@@ -85,8 +105,8 @@ def spawnZombie(game: GameState): GameObject / { Screen, random } = {
 }
 
 def move(gameObject: GameObject, dt: Int): GameObject = gameObject match {
-  case Shot(hitbox, movementVector) => 
-    Shot(hitbox.move(movementVector * dt), movementVector)
+  case Bullet(hitbox, movementVector) => 
+    Bullet(hitbox.move(movementVector * dt), movementVector)
   case Zombie(hitbox, movementVector) =>
     Zombie(hitbox.move(movementVector * dt), movementVector)
 }
@@ -113,13 +133,13 @@ def move(player: Player, dt: Int): Player / Input = {
 }
 
 def shooting(objects: List[GameObject]): List[GameObject] = {
-  val (shots, zombies) = objects.partition {
-    case Shot(_, _) => true
+  val (bullets, zombies) = objects.partition {
+    case Bullet(_, _) => true
     case Zombie(_, _) => false
   }
 
-  val (shotsThatHit, remainingShots) = shots.partition {
-    case Shot(sHitbox, _) =>
+  val (bulletsThatHit, remainingBullets) = bullets.partition {
+    case Bullet(sHitbox, _) =>
       zombies.any {
         case Zombie(zHitbox, _) => sHitbox.collides(zHitbox)
         case _ => false
@@ -129,14 +149,14 @@ def shooting(objects: List[GameObject]): List[GameObject] = {
 
   val (dead, alive) = zombies.partition {
     case Zombie(zHitbox, _) =>
-      shotsThatHit.any {
-        case Shot(sHitbox, _) => zHitbox.collides(sHitbox)
+      bulletsThatHit.any {
+        case Bullet(sHitbox, _) => zHitbox.collides(sHitbox)
         case _ => false
       }
     case _              => false
   }
 
-  alive.append(remainingShots)
+  alive.append(remainingBullets)
 }
 
 def update(game: GameState, dt: Int): GameState / { Input, random, Screen, Timer } = {
@@ -155,7 +175,12 @@ def update(game: GameState, dt: Int): GameState / { Input, random, Screen, Timer
     []
   }
 
-  val remainingAfterShooting = shooting(spawnedZombie.append(game.objects))
+  val (inRange, outOfRange) = objects.partition {
+    case Bullet(hitbox, _) => hitbox.visible()
+    case _ => true
+  } 
+
+  val remainingAfterShooting = shooting(spawnedZombie.append(inRange))
 
   val (damagingZombies, remainingObjects) = remainingAfterShooting.partition {
     case Zombie(hitbox, _) => hitbox.collides(Simple(player.drawable))
@@ -173,7 +198,11 @@ def update(game: GameState, dt: Int): GameState / { Input, random, Screen, Timer
       Zombie(newHitbox, m.rotate(missingAngle)).move(dt)
     case o => o.move(dt)
   }
-  GameState(movedPlayer.changeHealth(playerHealthLoss.neg), movedObjects)
+
+  val updatedPlayer = movedPlayer.changeHealth(playerHealthLoss.neg)
+                      .keepInsideScreen()
+
+  GameState(updatedPlayer, movedObjects)
 }
 
 def render(game: GameState): Unit / { Canvas, Input } = {
