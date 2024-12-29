@@ -1,5 +1,6 @@
 module game
 
+import src/constants
 import src/ffi
 import src/text
 import src/utils
@@ -26,10 +27,15 @@ interface Screen {
 def visible(d: ManipulatedDrawable): Bool / Screen = 
   collides(d, Simple(Rect(NULL_VECTOR, do width(), do height(), Black())))
 
-interface Timer {
-  def left(): Int
-  def reset(): Unit
-  def change(by: Int): Unit
+record Timer(left: Int)
+
+effect elapsed[R](): (Timer, R)
+
+def timer[R](t: Timer, elapsed: Int, default: R): (Timer, R) / elapsed[R] = {
+  val remaining = t.left - elapsed
+  val hasElapsed = remaining <= 0
+  if (hasElapsed) do elapsed[R]()
+  else (Timer(remaining), default)
 }
 
 type GameObject {
@@ -71,10 +77,17 @@ def keepInsideScreen(player: Player): Player / Screen = {
   )
 }
 
-record GameState(player: Player, objects: List[GameObject])
+record GameTimer(zombieTimer: Timer, waveTimer: Timer)
+
+record GameState(
+  player: Player,
+  objects: List[GameObject],
+  timers: GameTimer,
+  wave: Int
+)
 
 def addObject(game: GameState, gameObject: GameObject): GameState = 
-  GameState(game.player, Cons(gameObject, game.objects))
+  GameState(game.player, Cons(gameObject, game.objects), game.timers, game.wave)
 
 type Side {
   Top()
@@ -132,8 +145,13 @@ def move(player: Player, dt: Int): Player / Input = {
   )
 }
 
-def shooting(objects: List[GameObject]): List[GameObject] = {
-  val (bullets, zombies) = objects.partition {
+def shooting(objects: List[GameObject]): (List[GameObject], Int) / Screen = {
+  val (inRange, outOfRange) = objects.partition {
+    case Bullet(hitbox, _) => hitbox.visible()
+    case _ => true
+  }
+
+  val (bullets, zombies) = inRange.partition {
     case Bullet(_, _) => true
     case Zombie(_, _) => false
   }
@@ -156,33 +174,17 @@ def shooting(objects: List[GameObject]): List[GameObject] = {
     case _              => false
   }
 
-  alive.append(remainingBullets)
+  (alive.append(remainingBullets), dead.size)
 }
 
-def update(game: GameState, dt: Int): GameState / { Input, random, Screen, Timer } = {
+def update(game: GameState, dt: Int): GameState / { Input, random, Screen } = {
   val player = game.player
   val movedPlayer = player.move(dt)
   val objects = game.objects
 
-  val timeLeftToSpawn = do left() - dt
-  val shouldSpawn = timeLeftToSpawn < 0
-  val spawnedZombie = if (shouldSpawn) {
-    do reset()
-    do change(timeLeftToSpawn)
-    [spawnZombie(game)] 
-  } else {
-    do change(dt.neg)
-    []
-  }
+  val (remaining, deadZombies) = shooting(objects)
 
-  val (inRange, outOfRange) = objects.partition {
-    case Bullet(hitbox, _) => hitbox.visible()
-    case _ => true
-  } 
-
-  val remainingAfterShooting = shooting(spawnedZombie.append(inRange))
-
-  val (damagingZombies, remainingObjects) = remainingAfterShooting.partition {
+  val (damagingZombies, remainingObjects) = remaining.partition {
     case Zombie(hitbox, _) => hitbox.collides(Simple(player.drawable))
     case _ => false
   }
@@ -199,10 +201,24 @@ def update(game: GameState, dt: Int): GameState / { Input, random, Screen, Timer
     case o => o.move(dt)
   }
 
+  val (updatedWaveTimer, updatedWave) = 
+    try { game.timers.waveTimer.timer[Int](deadZombies, game.wave) }
+    with elapsed[Int] {
+      val newWave = inc(game.wave)
+      (Timer(START_WAVE_TIMER * newWave), newWave)
+    }
+
+  val (updatedZombieTimer, spawnedZombie) = 
+    try { game.timers.zombieTimer.timer(dt, Nil[GameObject]) }
+    with elapsed[List[GameObject]] { 
+      (Timer(ZOMBIE_SPAWN_INTERVAL / updatedWave), [spawnZombie(game)])
+    }
+
   val updatedPlayer = movedPlayer.changeHealth(playerHealthLoss.neg)
                       .keepInsideScreen()
-
-  GameState(updatedPlayer, movedObjects)
+  val updatedObjects = spawnedZombie.append(movedObjects)
+  val updatedTimers = GameTimer(updatedZombieTimer, updatedWaveTimer)
+  GameState(updatedPlayer, updatedObjects, updatedTimers, updatedWave)
 }
 
 def render(game: GameState): Unit / { Canvas, Input } = {
