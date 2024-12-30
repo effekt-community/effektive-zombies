@@ -79,15 +79,36 @@ def keepInsideScreen(player: Player): Player / Screen = {
 
 record GameTimer(zombieTimer: Timer, waveTimer: Timer)
 
+record Score(score: Int, combo: Int, maxCombo: Int)
+
+def update(score: Score, comboBreak: Bool, hits: Int): Score = {
+  var combo = if (comboBreak) 0 else score.combo
+  var hitsM = hits
+  var addition = 0
+  while(hitsM > 0) {
+    addition = inc(addition) + combo
+    combo = inc(combo)
+    hitsM = hitsM - 1
+  }
+  Score(score.score + addition, combo, max(combo, score.maxCombo))
+}
+
+def show(score: Score): String = 
+  "Score: " ++ show(score.score) ++ "\nMax. Combo: " ++ show(score.maxCombo)
+
 record GameState(
   player: Player,
   objects: List[GameObject],
   timers: GameTimer,
-  wave: Int
+  wave: Int,
+  score: Score
 )
 
 def addObject(game: GameState, gameObject: GameObject): GameState = 
-  GameState(game.player, Cons(gameObject, game.objects), game.timers, game.wave)
+  GameState(
+    game.player, Cons(gameObject, game.objects), 
+    game.timers, game.wave, game.score
+  )
 
 type Side {
   Top()
@@ -145,7 +166,7 @@ def move(player: Player, dt: Int): Player / Input = {
   )
 }
 
-def shooting(objects: List[GameObject]): (List[GameObject], Int) / Screen = {
+def shooting(objects: List[GameObject]): (List[GameObject], Int, Bool) / Screen = {
   val (inRange, outOfRange) = objects.partition {
     case Bullet(hitbox, _) => hitbox.visible()
     case _ => true
@@ -174,15 +195,18 @@ def shooting(objects: List[GameObject]): (List[GameObject], Int) / Screen = {
     case _              => false
   }
 
-  (alive.append(remainingBullets), dead.size)
+  (alive.append(remainingBullets), dead.size, outOfRange.nonEmpty)
 }
 
 def update(game: GameState, dt: Int): GameState / { Input, random, Screen } = {
   val player = game.player
   val movedPlayer = player.move(dt)
   val objects = game.objects
+  val timers = game.timers
+  val wave = game.wave
+  val score = game.score
 
-  val (remaining, deadZombies) = shooting(objects)
+  val (remaining, deadZombies, bulletMissed) = shooting(objects)
 
   val (damagingZombies, remainingObjects) = remaining.partition {
     case Zombie(hitbox, _) => hitbox.collides(Simple(player.drawable))
@@ -202,14 +226,14 @@ def update(game: GameState, dt: Int): GameState / { Input, random, Screen } = {
   }
 
   val (updatedWaveTimer, updatedWave) = 
-    try { game.timers.waveTimer.timer[Int](deadZombies, game.wave) }
+    try { timers.waveTimer.timer[Int](deadZombies, wave) }
     with elapsed[Int] {
-      val newWave = inc(game.wave)
+      val newWave = inc(wave)
       (Timer(START_WAVE_TIMER * newWave), newWave)
     }
 
   val (updatedZombieTimer, spawnedZombie) = 
-    try { game.timers.zombieTimer.timer(dt, Nil[GameObject]) }
+    try { timers.zombieTimer.timer(dt, Nil[GameObject]) }
     with elapsed[List[GameObject]] { 
       (Timer(ZOMBIE_SPAWN_INTERVAL / updatedWave), [spawnZombie(game)])
     }
@@ -218,7 +242,8 @@ def update(game: GameState, dt: Int): GameState / { Input, random, Screen } = {
                       .keepInsideScreen()
   val updatedObjects = spawnedZombie.append(movedObjects)
   val updatedTimers = GameTimer(updatedZombieTimer, updatedWaveTimer)
-  GameState(updatedPlayer, updatedObjects, updatedTimers, updatedWave)
+  val updatedScore = score.update(playerHealthLoss > 0 || bulletMissed, deadZombies)
+  GameState(updatedPlayer, updatedObjects, updatedTimers, updatedWave, updatedScore)
 }
 
 def render(game: GameState): Unit / { Canvas, Input } = {

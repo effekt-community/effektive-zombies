@@ -33,7 +33,9 @@ def main(): Unit = {
     Timer(START_WAVE_TIMER)
   )
 
-  val START_GAME = GameState(START_PLAYER, [], START_TIMERS, START_WAVE)
+  val START_SCORE = Score(0, 0, 0)
+
+  val START_GAME = GameState(START_PLAYER, [], START_TIMERS, START_WAVE, START_SCORE)
   val game = ref[GameState](START_GAME)
 
   val keysPressed = emptyMap[String, Bool]()
@@ -66,6 +68,7 @@ def main(): Unit = {
         render(updatedGame)
         game.set(updatedGame)
       } else {
+        println(show(game.get.score))
         renderDeathScreen()
         do draw(Simple(RETRY_BUTTON))
         do write(RETRY_TEXT)

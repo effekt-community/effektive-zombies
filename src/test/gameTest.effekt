@@ -15,7 +15,8 @@ def gameSuite() = suite("game") {
   )
   val DUMMY_TIMER = Timer(0)
   val DUMMY_TIMERS = GameTimer(DUMMY_TIMER, DUMMY_TIMER)
-  val DUMMYGAME = GameState(DUMMY_PLAYER, [], DUMMY_TIMERS, 0)
+  val DUMMY_SCORE = Score(0, 0, 0)
+  val DUMMYGAME = GameState(DUMMY_PLAYER, [], DUMMY_TIMERS, 0, DUMMY_SCORE)
 
   def pseudoHandler { f: () => Unit / {Input, random, Screen} }: Unit = {
     try { f() }
@@ -80,6 +81,14 @@ def gameSuite() = suite("game") {
     assertTrue(elapsed.all{ x => x })
   }
 
+  test("score update") {
+    val killed3Score = DUMMY_SCORE.update(false, 3)
+    val breakScore = killed3Score.update(true, 0)
+    val updatedScore = breakScore.update(false, 2)
+
+    assertEqual(updatedScore, Score(9, 2, 3))
+  }
+
   test("zombie shooting") {
     val SHOT_ZOMBIE_HITBOX = Simple(Rect(Vec2d(50.0, 50.0), 10.0, 10.0, Black()))
     val SHOT_ZOMBIE = Zombie(SHOT_ZOMBIE_HITBOX, Vec2d(1.0, 1.0))
@@ -106,7 +115,7 @@ def gameSuite() = suite("game") {
       "Bullet should not collide with non-overlapping zombie"
     )
     
-    val (remaining, _) = try {
+    val (remaining, dead, missed) = try {
       shooting(
         [MISSING_BULLET, SHOT_ZOMBIE, OUT_OF_RANGE, ALIVE, BULLET]
       )
@@ -114,6 +123,10 @@ def gameSuite() = suite("game") {
       def width() = resume(100.0)
       def height() = resume(100.0)
     }
+
+    assert(dead, 1, "Shooting should signal that exactly one zombie died")
+
+    assertTrue(missed, "Shot missed, but function signals the contrary")
 
     assertFalse(
       remaining.contains(OUT_OF_RANGE){(a, b) => a.equals(b)},
