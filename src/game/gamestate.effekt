@@ -1,0 +1,20 @@
+module game/gamestate
+
+import src/game/player
+import src/game/gameobject
+import src/game/gametimer
+import src/game/score
+
+record GameState(
+  player: Player,
+  objects: List[GameObject],
+  timers: GameTimer,
+  wave: Int,
+  score: Score
+)
+
+def addObject(game: GameState, gameObject: GameObject): GameState = 
+  GameState(
+    game.player, Cons(gameObject, game.objects), 
+    game.timers, game.wave, game.score
+  )

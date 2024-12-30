@@ -2,7 +2,12 @@ module gameTest
 
 import test
 import mutable/map
-import src/game
+import src/game/player
+import src/game/gametimer
+import src/game/game
+import src/game/gameobject
+import src/game/gamestate
+import src/game/score
 import src/utils
 import src/vec2d
 import src/shapes/manipulated

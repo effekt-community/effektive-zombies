@@ -4,54 +4,24 @@ import mutable/map
 import src/shapes/hitbox
 import src/shapes/manipulated
 import src/shapes/simple
-import src/constants
+import src/game/constants
+import src/game/game
+import src/game/gameobject
+import src/game/gamestate
+import src/game/player
+import src/game/score
 import src/ffi
-import src/game
 import src/text
 import src/utils
 import src/vec2d
 
 def main(): Unit = {
-  val CANVAS_WIDTH = clientWidth()
-  val CANVAS_HEIGHT = clientHeight()
-  val CANVAS_CENTER = Vec2d(CANVAS_WIDTH / 2.0, CANVAS_HEIGHT / 2.0)
   val canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT)
-
-  val PLAYER_SIZE = CANVAS_HEIGHT / 15.0
-  val PLAYER_SPEED = 0.4
-  val PLAYER_HEALTH = 2
-  val PLAYER_START_POS = CANVAS_CENTER
-  val PLAYER_HITBOX = Circle(PLAYER_START_POS, PLAYER_SIZE, Green())
-  val GUN_WIDTH  = PLAYER_SIZE / 1.2
-  val GUN_HEIGTH = GUN_WIDTH / 3.0
-  val GUN_START_POS = PLAYER_START_POS + Vec2d(PLAYER_SIZE - 1.0, -0.5 * GUN_HEIGTH)
-  val GUN = Rect(GUN_START_POS, GUN_WIDTH, GUN_HEIGTH, Black())
-  val START_PLAYER = Player(PLAYER_HITBOX, GUN, PLAYER_HEALTH, PLAYER_SPEED)
-
-  val START_TIMERS = GameTimer(
-    Timer(ZOMBIE_SPAWN_INTERVAL),
-    Timer(START_WAVE_TIMER)
-  )
-
-  val START_SCORE = Score(0, 0, 0)
-
-  val START_GAME = GameState(START_PLAYER, [], START_TIMERS, START_WAVE, START_SCORE)
   val game = ref[GameState](START_GAME)
 
   val keysPressed = emptyMap[String, Bool]()
   val mousePos = ref[Vec2d](NULL_VECTOR)
   val lastFrameTimeStamp = ref[Int](getTime())
-
-  val RETRY_BUTTON_WIDTH = CANVAS_WIDTH / 4.0
-  val RETRY_BUTTON_HEIGHT = CANVAS_HEIGHT / 6.0
-  val RETRY_BUTTON_CENTER = CANVAS_CENTER + fromInt(0, 50)
-  val RETRY_BUTTON = Rect(
-    NULL_VECTOR, RETRY_BUTTON_WIDTH,
-    RETRY_BUTTON_HEIGHT, Green()
-  ).centerAt(RETRY_BUTTON_CENTER)
-  val RETRY_TEXT = Text(
-    "Retry", RETRY_BUTTON_CENTER, 64, Serif(), Center(), Middle(), White()
-  )
 
   def timeSinceLastFrame(): Int = {
     val now = getTime()

@@ -1,6 +1,11 @@
-module game
+module game/game
 
-import src/constants
+import src/game/constants
+import src/game/gameobject
+import src/game/gamestate
+import src/game/gametimer
+import src/game/player
+import src/game/score
 import src/ffi
 import src/text
 import src/utils
@@ -27,39 +32,6 @@ interface Screen {
 def visible(d: ManipulatedDrawable): Bool / Screen = 
   collides(d, Simple(Rect(NULL_VECTOR, do width(), do height(), Black())))
 
-record Timer(left: Int)
-
-effect elapsed[R](): (Timer, R)
-
-def timer[R](t: Timer, elapsed: Int, default: R): (Timer, R) / elapsed[R] = {
-  val remaining = t.left - elapsed
-  val hasElapsed = remaining <= 0
-  if (hasElapsed) do elapsed[R]()
-  else (Timer(remaining), default)
-}
-
-type GameObject {
-  Bullet(drawable: ManipulatedDrawable, movementVector: Vec2d)
-  Zombie(drawable: ManipulatedDrawable, movementVector: Vec2d)
-}
-
-def getCenter(object: GameObject): Vec2d = object match {
-  case Bullet(hitbox, _) => hitbox.getCenter()
-  case Zombie(hitbox, _) => hitbox.getCenter()
-}
-
-def getHitbox(object: GameObject): ManipulatedDrawable = object match {
-  case Bullet(hitbox, _) => hitbox
-  case Zombie(hitbox, _) => hitbox
-}
-
-record Player(drawable: SimpleDrawable, gun: SimpleDrawable, health: Int, speed: Double)
-
-def isAlive(player: Player): Bool = player.health > 0
-
-def changeHealth(player: Player, by: Int): Player = 
-  Player(player.drawable, player.gun, player.health + by, player.speed)
-
 def keepInsideScreen(player: Player): Player / Screen = {
   val screenW = do width()
   val screenH = do height()
@@ -76,39 +48,6 @@ def keepInsideScreen(player: Player): Player / Screen = {
     player.speed
   )
 }
-
-record GameTimer(zombieTimer: Timer, waveTimer: Timer)
-
-record Score(score: Int, combo: Int, maxCombo: Int)
-
-def update(score: Score, comboBreak: Bool, hits: Int): Score = {
-  var combo = if (comboBreak) 0 else score.combo
-  var hitsM = hits
-  var addition = 0
-  while(hitsM > 0) {
-    addition = inc(addition) + combo
-    combo = inc(combo)
-    hitsM = hitsM - 1
-  }
-  Score(score.score + addition, combo, max(combo, score.maxCombo))
-}
-
-def show(score: Score): String = 
-  "Score: " ++ show(score.score) ++ "\nMax. Combo: " ++ show(score.maxCombo)
-
-record GameState(
-  player: Player,
-  objects: List[GameObject],
-  timers: GameTimer,
-  wave: Int,
-  score: Score
-)
-
-def addObject(game: GameState, gameObject: GameObject): GameState = 
-  GameState(
-    game.player, Cons(gameObject, game.objects), 
-    game.timers, game.wave, game.score
-  )
 
 type Side {
   Top()
@@ -132,17 +71,12 @@ def spawnZombie(game: GameState): GameObject / { Screen, random } = {
     case Left() => Vec2d(0.0, r * h)
     case Top() => Vec2d(r * w, 0.0)
   }
-  val player = game.player
-  val zombieSize = h / 15.0
-  val zombie = Zombie(Simple(Circle(zombiePos, zombieSize, Black())), Vec2d(0.3, 0.0))
+  val zombieSize = h / CANVAS_ZOMBIE_FACTOR
+  val zombie = Zombie(
+    Simple(Circle(zombiePos, zombieSize, Black())),
+    Vec2d(ZOMBIE_BASE_SPEED, 0.0)
+  )
   zombie
-}
-
-def move(gameObject: GameObject, dt: Int): GameObject = gameObject match {
-  case Bullet(hitbox, movementVector) => 
-    Bullet(hitbox.move(movementVector * dt), movementVector)
-  case Zombie(hitbox, movementVector) =>
-    Zombie(hitbox.move(movementVector * dt), movementVector)
 }
 
 def wasdDirection(): Vec2d / Input = {

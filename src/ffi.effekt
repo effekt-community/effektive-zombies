@@ -102,7 +102,3 @@ extern io def requestIdleCallback(callback: (IdleDeadline) => Unit at {io, globa
   jsWeb "window.requestIdleCallback(deadline => $effekt.runToplevel((ks, k) => ${callback}(deadline, ks, k)))"
 
 extern io def getTime(): Int = jsWeb "Date.now()"
-
-extern io def clientWidth(): Double = jsWeb "document.documentElement.clientWidth"
-
-extern io def clientHeight(): Double = jsWeb "document.documentElement.clientHeight"

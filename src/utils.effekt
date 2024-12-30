@@ -2,6 +2,17 @@ module utils
 
 effect random(): Double
 
+record Timer(left: Int)
+
+effect elapsed[R](): (Timer, R)
+
+def timer[R](t: Timer, elapsed: Int, default: R): (Timer, R) / elapsed[R] = {
+  val remaining = t.left - elapsed
+  val hasElapsed = remaining <= 0
+  if (hasElapsed) do elapsed[R]()
+  else (Timer(remaining), default)
+}
+
 def map[T](ref: Ref[T]) { f: T => T }: Unit = ref.set(f(ref.get))
 
 def inc(x: Int): Int = x + 1

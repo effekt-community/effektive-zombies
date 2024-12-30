@@ -1,0 +1,10 @@
+module game/player
+
+import src/shapes/simple
+
+record Player(drawable: SimpleDrawable, gun: SimpleDrawable, health: Int, speed: Double)
+
+def isAlive(player: Player): Bool = player.health > 0
+
+def changeHealth(player: Player, by: Int): Player = 
+  Player(player.drawable, player.gun, player.health + by, player.speed)

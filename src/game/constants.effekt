@@ -1,0 +1,81 @@
+module game/constants
+
+import src/game/score
+import src/game/gamestate
+import src/game/gametimer
+import src/game/player
+import src/shapes/simple
+import src/text
+import src/utils
+import src/vec2d
+
+val SECOND_IN_MS = 1000
+
+//------------------- Events -------------------
+val KEY_DOWN = "keydown"
+val KEY_UP = "keyup"
+val MOUSE_MOVE = "mousemove"
+val MOUSE_DOWN = "mousedown"
+
+//------------------- GameState -------------------
+namespace externVal {
+  extern pure def clientWidth(): Double = 
+    jsWeb "document.documentElement.clientWidth"
+  extern pure def clientHeight(): Double = 
+    jsWeb "document.documentElement.clientHeight"
+}
+
+val CANVAS_WIDTH = externVal::clientWidth()
+val CANVAS_HEIGHT = externVal::clientHeight()
+val CANVAS_CENTER = Vec2d(CANVAS_WIDTH / 2.0, CANVAS_HEIGHT / 2.0)
+
+val CANVAS_PLAYER_FACTOR = 15.0
+val PLAYER_SIZE = CANVAS_HEIGHT / CANVAS_PLAYER_FACTOR
+val PLAYER_START_SPEED = 0.4
+val PLAYER_START_HEALTH = 2
+val PLAYER_START_POS = CANVAS_CENTER
+val PLAYER_HITBOX = Circle(PLAYER_START_POS, PLAYER_SIZE, Green())
+
+val PLAYER_GUN_FACTOR = 1.2
+val GUN_WIDTH  = PLAYER_SIZE / PLAYER_GUN_FACTOR
+val GUN_WIDTH_HEIGHT_FACTOR = 3.0
+val GUN_HEIGTH = GUN_WIDTH / GUN_WIDTH_HEIGHT_FACTOR
+val GUN_START_POS = PLAYER_START_POS + Vec2d(PLAYER_SIZE - 1.0, -0.5 * GUN_HEIGTH)
+val GUN = Rect(GUN_START_POS, GUN_WIDTH, GUN_HEIGTH, Black())
+val START_PLAYER = Player(
+  PLAYER_HITBOX,
+  GUN,
+  PLAYER_START_HEALTH, 
+  PLAYER_START_SPEED
+)
+
+val CANVAS_ZOMBIE_FACTOR = CANVAS_PLAYER_FACTOR
+val ZOMBIE_BASE_SPEED = 0.3
+
+val START_WAVE = 1
+val START_WAVE_TIMER = 10
+
+val ZOMBIE_SPAWN_INTERVAL = 1 * SECOND_IN_MS
+
+val START_SCORE = Score(0, 0, 0)
+
+val START_TIMERS = GameTimer(
+  Timer(ZOMBIE_SPAWN_INTERVAL),
+  Timer(START_WAVE_TIMER)
+)
+
+val START_GAME = GameState(START_PLAYER, [], START_TIMERS, START_WAVE, START_SCORE)
+
+//------------------- UI -------------------
+val CANVAS_RETRY_WIDTH_FACTOR = 4.0
+val RETRY_BUTTON_WIDTH = CANVAS_WIDTH / CANVAS_RETRY_WIDTH_FACTOR
+val CANVAS_RETRY_HEIGHT_FACTOR = 6.0
+val RETRY_BUTTON_HEIGHT = CANVAS_HEIGHT / CANVAS_RETRY_HEIGHT_FACTOR
+val RETRY_BUTTON_CENTER = CANVAS_CENTER + fromInt(0, 50)
+val RETRY_BUTTON = Rect(
+  NULL_VECTOR, RETRY_BUTTON_WIDTH,
+  RETRY_BUTTON_HEIGHT, Green()
+).centerAt(RETRY_BUTTON_CENTER)
+val RETRY_TEXT = Text(
+  "Retry", RETRY_BUTTON_CENTER, 64, Serif(), Center(), Middle(), White()
+)

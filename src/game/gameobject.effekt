@@ -1,0 +1,26 @@
+module game/gameObject
+
+import src/shapes/manipulated
+import src/vec2d
+
+type GameObject {
+  Bullet(drawable: ManipulatedDrawable, movementVector: Vec2d)
+  Zombie(drawable: ManipulatedDrawable, movementVector: Vec2d)
+}
+
+def getCenter(object: GameObject): Vec2d = object match {
+  case Bullet(hitbox, _) => hitbox.getCenter()
+  case Zombie(hitbox, _) => hitbox.getCenter()
+}
+
+def getHitbox(object: GameObject): ManipulatedDrawable = object match {
+  case Bullet(hitbox, _) => hitbox
+  case Zombie(hitbox, _) => hitbox
+}
+
+def move(gameObject: GameObject, dt: Int): GameObject = gameObject match {
+  case Bullet(hitbox, movementVector) => 
+    Bullet(hitbox.move(movementVector * dt), movementVector)
+  case Zombie(hitbox, movementVector) =>
+    Zombie(hitbox.move(movementVector * dt), movementVector)
+}

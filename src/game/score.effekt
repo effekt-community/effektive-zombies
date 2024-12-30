@@ -1,0 +1,18 @@
+module game/score
+
+record Score(score: Int, combo: Int, maxCombo: Int)
+
+def update(score: Score, comboBreak: Bool, hits: Int): Score = {
+  var combo = if (comboBreak) 0 else score.combo
+  var hitsM = hits
+  var addition = 0
+  while(hitsM > 0) {
+    addition = addition + 1 + combo
+    combo = combo + 1
+    hitsM = hitsM - 1
+  }
+  Score(score.score + addition, combo, max(combo, score.maxCombo))
+}
+
+def show(score: Score): String = 
+  "Score: " ++ show(score.score) ++ "\nMax. Combo: " ++ show(score.maxCombo)
