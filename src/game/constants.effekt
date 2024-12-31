@@ -5,9 +5,24 @@ import src/game/gamestate
 import src/game/gametimer
 import src/game/player
 import src/shapes/simple
+import src/shapes/manipulated
 import src/text
 import src/utils
 import src/vec2d
+
+val ASPECT_RATIO = 16.0 / 9.0
+
+def fittingSizes(width: Int, height: Int): (Int, Int) = {
+  if(height.toDouble * ASPECT_RATIO > width.toDouble) {
+    (width, (width.toDouble / ASPECT_RATIO).toInt)
+  } else {
+    ((height.toDouble * ASPECT_RATIO).toInt, height)
+  }
+}
+
+val GAME_WIDTH = 384
+val GAME_HEIGHT = (GAME_WIDTH.toDouble / ASPECT_RATIO).toInt()
+val GAME_CENTER = fromInt(GAME_WIDTH / 2, GAME_HEIGHT / 2)
 
 val SECOND_IN_MS = 1000
 
@@ -16,29 +31,18 @@ val KEY_DOWN = "keydown"
 val KEY_UP = "keyup"
 val MOUSE_MOVE = "mousemove"
 val MOUSE_DOWN = "mousedown"
+val RESIZE = "resize"
 
 //------------------- GameState -------------------
-namespace externVal {
-  extern pure def clientWidth(): Double = 
-    jsWeb "document.documentElement.clientWidth"
-  extern pure def clientHeight(): Double = 
-    jsWeb "document.documentElement.clientHeight"
-}
-
-val CANVAS_WIDTH = externVal::clientWidth()
-val CANVAS_HEIGHT = externVal::clientHeight()
-val CANVAS_CENTER = Vec2d(CANVAS_WIDTH / 2.0, CANVAS_HEIGHT / 2.0)
-
 val CANVAS_PLAYER_FACTOR = 15.0
-val PLAYER_SIZE = CANVAS_HEIGHT / CANVAS_PLAYER_FACTOR
-val PLAYER_START_SPEED = 0.4
+val PLAYER_START_SPEED = GAME_WIDTH.toDouble / (3 * SECOND_IN_MS).toDouble
 val PLAYER_START_HEALTH = 2
-val PLAYER_START_POS = CANVAS_CENTER
-val PLAYER_HITBOX = Circle(PLAYER_START_POS, PLAYER_SIZE, Green())
-
 val PLAYER_GUN_FACTOR = 1.2
-val GUN_WIDTH  = PLAYER_SIZE / PLAYER_GUN_FACTOR
 val GUN_WIDTH_HEIGHT_FACTOR = 3.0
+val PLAYER_SIZE = GAME_HEIGHT.toDouble() / CANVAS_PLAYER_FACTOR
+val PLAYER_START_POS = GAME_CENTER
+val PLAYER_HITBOX = Circle(PLAYER_START_POS, PLAYER_SIZE, Green())
+val GUN_WIDTH  = PLAYER_SIZE / PLAYER_GUN_FACTOR
 val GUN_HEIGTH = GUN_WIDTH / GUN_WIDTH_HEIGHT_FACTOR
 val GUN_START_POS = PLAYER_START_POS + Vec2d(PLAYER_SIZE - 1.0, -0.5 * GUN_HEIGTH)
 val GUN = Rect(GUN_START_POS, GUN_WIDTH, GUN_HEIGTH, Black())
@@ -49,8 +53,10 @@ val START_PLAYER = Player(
   PLAYER_START_SPEED
 )
 
+val BULLET_SPEED = GAME_WIDTH.toDouble / SECOND_IN_MS.toDouble
+
 val CANVAS_ZOMBIE_FACTOR = CANVAS_PLAYER_FACTOR
-val ZOMBIE_BASE_SPEED = 0.3
+val ZOMBIE_BASE_SPEED = GAME_WIDTH.toDouble / (10 * SECOND_IN_MS).toDouble
 
 val START_WAVE = 1
 val START_WAVE_TIMER = 10
@@ -67,15 +73,32 @@ val START_TIMERS = GameTimer(
 val START_GAME = GameState(START_PLAYER, [], START_TIMERS, START_WAVE, START_SCORE)
 
 //------------------- UI -------------------
+val DEATH_BACKGROUND = 
+  Simple(Rect(NULL_VECTOR, GAME_WIDTH.toDouble, GAME_HEIGHT.toDouble, Black()))
+
+val YOU_DIED_OFFSET = GAME_HEIGHT / 8 
+val YOU_DIED_SIZE = GAME_HEIGHT / 9 
+val YOU_DIED = Text(
+  "You Died",
+  GAME_CENTER - fromInt(0, YOU_DIED_OFFSET),
+  YOU_DIED_SIZE,
+  Serif(),
+  Center(),
+  Bottom(),
+  Red()
+)
 val CANVAS_RETRY_WIDTH_FACTOR = 4.0
-val RETRY_BUTTON_WIDTH = CANVAS_WIDTH / CANVAS_RETRY_WIDTH_FACTOR
 val CANVAS_RETRY_HEIGHT_FACTOR = 6.0
-val RETRY_BUTTON_HEIGHT = CANVAS_HEIGHT / CANVAS_RETRY_HEIGHT_FACTOR
-val RETRY_BUTTON_CENTER = CANVAS_CENTER + fromInt(0, 50)
+val RETRY_BUTTON_WIDTH = GAME_WIDTH.toDouble / CANVAS_RETRY_WIDTH_FACTOR
+val RETRY_BUTTON_HEIGHT = GAME_HEIGHT.toDouble / CANVAS_RETRY_HEIGHT_FACTOR
+val RETRY_BUTTON_CENTER = GAME_CENTER + fromInt(0, 50)
 val RETRY_BUTTON = Rect(
   NULL_VECTOR, RETRY_BUTTON_WIDTH,
   RETRY_BUTTON_HEIGHT, Green()
 ).centerAt(RETRY_BUTTON_CENTER)
+
+val RETRY_TEXT_WIDTH = 128.0 / CANVAS_RETRY_HEIGHT_FACTOR
 val RETRY_TEXT = Text(
-  "Retry", RETRY_BUTTON_CENTER, 64, Serif(), Center(), Middle(), White()
+  "Retry", RETRY_BUTTON_CENTER, RETRY_TEXT_WIDTH.toInt(), 
+  Serif(), Center(), Middle(), White()
 )

@@ -16,7 +16,12 @@ import src/utils
 import src/vec2d
 
 def main(): Unit = {
-  val canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT)
+  createCanvas(GAME_WIDTH, GAME_HEIGHT)
+  val (dW, dH) = fittingSizes(windowWidth(), windowHeight()) 
+  val displayedWidth = ref[Int](dW)
+  val displayedHeight = ref[Int](dH)
+  val ctx = ref[Context2D](resizeCanvas(displayedWidth.get, displayedHeight.get))
+
   val game = ref[GameState](START_GAME)
 
   val keysPressed = emptyMap[String, Bool]()
@@ -40,29 +45,29 @@ def main(): Unit = {
       } else {
         println(show(game.get.score))
         renderDeathScreen()
-        do draw(Simple(RETRY_BUTTON))
-        do write(RETRY_TEXT)
       }
     } with Canvas {
       def draw(drawable) = {
         def drawSimple(d: SimpleDrawable): Unit = d match {
           case Rect(upperLeft, width, height, color) =>
-            canvas.drawRect(
-              upperLeft.x, upperLeft.y, 
-              width, height, show(color)
+            ctx.get.drawRect(
+              upperLeft.x.toInt, upperLeft.y.toInt, 
+              width.toInt, height.toInt, show(color)
             )
           case Circle(center, radius, color) =>
-            canvas.drawCircle(center.x, center.y, radius, show(color))
+            ctx.get.drawCircle(
+              center.x.toInt, center.y.toInt, radius.toInt, show(color)
+            )
         }
 
         def unwrapDraw(d: ManipulatedDrawable): Unit = d match {
           case Simple(inner) => drawSimple(inner)
           case Rotate(inner, rotation, relativeTo) =>
-            val oldMatrix = canvas.getTransform()
+            val oldMatrix = ctx.get.getTransform()
             val realRelative = relativeTo.getOrElse { inner.getCenter() }
-            canvas.setupRotation(rotation, realRelative.x, realRelative.y)
+            ctx.get.setupRotation(rotation, realRelative.x.toInt, realRelative.y.toInt)
             unwrapDraw(inner)
-            canvas.setTransform(oldMatrix)
+            ctx.get.setTransform(oldMatrix)
           case Compose(first, second) =>
             unwrapDraw(first); unwrapDraw(second)
         }
@@ -70,22 +75,19 @@ def main(): Unit = {
         resume(())
       }
       def write(text) = {
-        canvas.drawText(
-          text.text, text.position.x, text.position.y,
+        ctx.get.drawText(
+          text.text, text.position.x.toInt, text.position.y.toInt,
           show(text.fontSizePX) ++ "px " ++ show(text.fontType), 
           show(text.alignment), show(text.baseline), show(text.color)
         )
         resume(())
       }
-      def clear = { canvas.clear(); resume(()) }
+      def clear = { ctx.get.clear(); resume(()) }
     } with Input {
       def isPressed(key) = resume(keysPressed.get(key).getOrElse { false })
       def mousePos() = resume(mousePos.get)
     } with random {
       resume(random())
-    } with Screen {
-      def width = resume(CANVAS_WIDTH)
-      def height = resume(CANVAS_HEIGHT)
     }
     
     requestIdleCallback(idleCallback)
@@ -97,8 +99,10 @@ def main(): Unit = {
     keysPressed.update(event.getKey(), false)
 
   def mouseMoveHandler(event: Event): Unit = {
-    val x = event.getClientX()
-    val y = event.getClientY()
+    val xRatio = GAME_WIDTH.toDouble / displayedWidth.get.toDouble 
+    val yRatio = GAME_HEIGHT.toDouble / displayedHeight.get.toDouble
+    val x = event.getClientX() * xRatio
+    val y = event.getClientY() * yRatio
     mousePos.set(Vec2d(x, y))
   }
   def mouseDownHandler(event: Event): Unit = {
@@ -111,7 +115,7 @@ def main(): Unit = {
         val bulletDrawable = player.gun.changeColor(Black())
         val bullet = Bullet(
           Rotate(Simple(bulletDrawable), gunAngle, Some(playerCenter)),
-          Vec2d(1.0, 0.0).rotate(gunAngle)
+          Vec2d(BULLET_SPEED, 0.0).rotate(gunAngle)
         )
         game.map{g => g.addObject(bullet)}
       } else if (mousePos.get.isInside(RETRY_BUTTON.toHitbox())) {
@@ -120,10 +124,18 @@ def main(): Unit = {
     }
   }
 
+  def resizeHandler(event: Event): Unit = {
+    val (newWidth, newHeight) = fittingSizes(windowWidth(), windowHeight())
+    displayedWidth.set(newWidth)
+    displayedHeight.set(newHeight)
+    ctx.set(resizeCanvas(newWidth, newHeight))
+  }
+
   addEventListener(KEY_DOWN, pressedHandler)
   addEventListener(KEY_UP, releasedHandler)
   addEventListener(MOUSE_MOVE, mouseMoveHandler)
   addEventListener(MOUSE_DOWN, mouseDownHandler)
+  addEventListener(RESIZE, resizeHandler)
 
   requestIdleCallback(idleCallback)
 }

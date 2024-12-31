@@ -2,6 +2,7 @@ module gameTest
 
 import test
 import mutable/map
+import src/game/constants
 import src/game/player
 import src/game/gametimer
 import src/game/game
@@ -23,12 +24,9 @@ def gameSuite() = suite("game") {
   val DUMMY_SCORE = Score(0, 0, 0)
   val DUMMYGAME = GameState(DUMMY_PLAYER, [], DUMMY_TIMERS, 0, DUMMY_SCORE)
 
-  def pseudoHandler { f: () => Unit / {Input, random, Screen} }: Unit = {
+  def pseudoHandler { f: () => Unit / {Input, random} }: Unit = {
     try { f() }
-    with Screen {
-      def width = resume(0.0)
-      def height = resume(0.0)
-    } with Input {
+    with Input {
       def isPressed(key) = resume(false)
       def mousePos() = resume(NULL_VECTOR)
     } with random { resume(0.0) }
@@ -107,7 +105,8 @@ def gameSuite() = suite("game") {
     val MISSING_HITBOX = Simple(Rect(Vec2d(80.0, 80.0), 10.0, 10.0, Black()))
     val MISSING_BULLET = Bullet(MISSING_HITBOX, Vec2d(3.0, 3.0))
 
-    val OUT_OF_RANGE_HITBOX = Simple(Rect(Vec2d(200.0, 200.0), 10.0, 10.0, Black()))
+    val OUT_OF_RANGE_HITBOX = 
+      Simple(Rect(fromInt(GAME_WIDTH + 10, GAME_HEIGHT + 10), 10.0, 10.0, Black()))
     val OUT_OF_RANGE = Bullet(OUT_OF_RANGE_HITBOX, Vec2d(2.0, 2.0))
 
     assertTrue(
@@ -120,14 +119,9 @@ def gameSuite() = suite("game") {
       "Bullet should not collide with non-overlapping zombie"
     )
     
-    val (remaining, dead, missed) = try {
-      shooting(
-        [MISSING_BULLET, SHOT_ZOMBIE, OUT_OF_RANGE, ALIVE, BULLET]
-      )
-    } with Screen {
-      def width() = resume(100.0)
-      def height() = resume(100.0)
-    }
+    val (remaining, dead, missed) = shooting(
+      [MISSING_BULLET, SHOT_ZOMBIE, OUT_OF_RANGE, ALIVE, BULLET]
+    )
 
     assert(dead, 1, "Shooting should signal that exactly one zombie died")
 

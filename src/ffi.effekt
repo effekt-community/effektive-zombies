@@ -3,20 +3,10 @@ module ffi
 extern def toDouble(b: Bool): Double = 
   js "(function() { if (${b}) { return 1; } else { return 0; }})()"
 
-extern type Node
-
-extern io def unsafeGetElementById(id: String): Node =
-  jsWeb "document.getElementById(${id})"
-
-def getElementById(id: String): Option[Node] = {
-  val unsafeElement = unsafeGetElementById(id)
-  undefinedToOption(unsafeElement)
-}
-
 extern type Event
 
 extern io def addEventListener(eventType: String, callback: Event => Unit at {io, global}): Unit =
-  jsWeb """document.addEventListener(${eventType}, 
+  jsWeb """document.defaultView.addEventListener(${eventType}, 
            (event) => $effekt.runToplevel((ks, k) => ${callback}(event, ks, k)))"""
 
 extern pure def getKey(event: Event): String =
@@ -31,70 +21,98 @@ extern io def getClientY(event: Event): Double =
 extern io def getButton(event: Event): Int =
   jsWeb "${event}.button"
 
+extern type Context2D
 
-extern io def createCanvas(width: Double, height: Double): Node =
+extern jsWeb """
+  function get$canvas() {
+    return document.getElementById("canvas")
+  }
+
+  function $resize(canvas, width, height) {
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
+    ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    return ctx;
+  }
+"""
+
+extern io def createCanvas(width: Int, height: Int): Context2D =
   jsWeb """(function(){
   canvas = document.createElement("canvas");
   canvas.id = "canvas";
   canvas.width = ${width};
   canvas.height = ${height};
   //https://stackoverflow.com/a/7782251/15982248
-  canvas.style = "position:absolute;top:0;left:0";
+  canvas.style.position = "absolute";
+  canvas.style.top = '50%';
+  canvas.style.left = '50%';
+  canvas.style.transform = 'translate(-50%, -50%)';
+  canvas.style.setProperty("image-rendering", "pixelated");
+  $resize(canvas, ${width}, ${height});
   document.body.appendChild(canvas);
-  return canvas;
+  return ctx;
+  })()
+  """
+
+///https://www.youtube.com/watch?v=1y57COMRSdA
+extern io def resizeCanvas(width: Int, height: Int): Context2D =
+  jsWeb """(function(){
+  canvas = get$canvas();
+  return $resize(canvas, ${width}, ${height});
   })()
   """
 
 extern io def drawRect(
-  canvas: Node, x: Double, y: Double, 
-  width: Double, height: Double, color: String
+  ctx: Context2D, x: Int, y: Int, 
+  width: Int, height: Int, color: String
 ): Unit =
-  jsWeb """ctx = ${canvas}.getContext("2d");
-           ctx.fillStyle = ${color}; 
-           ctx.fillRect(${x}, ${y}, ${width}, ${height});"""
+  jsWeb """${ctx}.fillStyle = ${color}; 
+           ${ctx}.fillRect(${x}, ${y}, ${width}, ${height});"""
 
-extern io def drawCircle(canvas: Node, x: Double, y: Double, radius: Double, color: String): Unit =
-  jsWeb """ctx = ${canvas}.getContext("2d");
-           ctx.fillStyle = ${color};
-           ctx.beginPath();
-           ctx.arc(${x}, ${y}, ${radius}, 0, 2 * Math.PI);
-           ctx.fill();"""
+extern io def drawCircle(
+  ctx: Context2D, x: Int, y: Int, 
+  radius: Int, color: String
+): Unit =
+  jsWeb """${ctx}.fillStyle = ${color};
+           ${ctx}.beginPath();
+           ${ctx}.arc(${x}, ${y}, ${radius}, 0, 2 * Math.PI);
+           ${ctx}.fill();"""
 
-extern io def clear(canvas: Node): Unit = 
-  jsWeb """ctx = ${canvas}.getContext("2d");
-           w = ${canvas}.width;
-           h = ${canvas}.height;
-           ctx.clearRect(0, 0, w, h)"""
+extern io def clear(ctx: Context2D): Unit = 
+  jsWeb """canvas = get$canvas();
+           w = canvas.width;
+           h = canvas.height;
+           ${ctx}.clearRect(0, 0, w, h)"""
 
 extern io def drawText(
-  canvas: Node, text: String,
-  x: Double, y: Double, font: String, 
+  ctx: Context2D, text: String,
+  x: Int, y: Int, font: String, 
   alignment: String, baseline: String, color: String
 ): Unit =
-  jsWeb """ctx = ${canvas}.getContext("2d");
-           ctx.font = ${font};
-           ctx.textAlign = ${alignment};
-           ctx.textBaseline = ${baseline};
-           ctx.fillStyle = ${color};
-           ctx.fillText(${text}, ${x}, ${y})"""
+  jsWeb """${ctx}.font = ${font};
+           ${ctx}.textAlign = ${alignment};
+           ${ctx}.textBaseline = ${baseline};
+           ${ctx}.fillStyle = ${color};
+           ${ctx}.fillText(${text}, ${x}, ${y})"""
 
 //Sets up the transformation matrix to rotate all later drawn shapes clockwise by the given angle 
 //relative to the given coordinates
-extern io def setupRotation(canvas: Node, angle: Double, relativeToX: Double, relativeToY: Double): Unit =
-  jsWeb """ctx = ${canvas}.getContext("2d");
-           ctx.translate(${relativeToX}, ${relativeToY});
-           ctx.rotate(${angle});
-           ctx.translate(-${relativeToX}, -${relativeToY});"""
+extern io def setupRotation(
+  ctx: Context2D, angle: Double, 
+  relativeToX: Int, relativeToY: Int
+): Unit =
+  jsWeb """${ctx}.translate(${relativeToX}, ${relativeToY});
+           ${ctx}.rotate(${angle});
+           ${ctx}.translate(-${relativeToX}, -${relativeToY});"""
 
 extern type DOMMatrix
 
-extern io def getTransform(canvas: Node): DOMMatrix = 
-  jsWeb """ctx = ${canvas}.getContext("2d");
-           ctx.getTransform();"""
+extern io def getTransform(ctx: Context2D): DOMMatrix = 
+  jsWeb "${ctx}.getTransform();"
 
-extern io def setTransform(canvas: Node, matrix: DOMMatrix): Unit =
-  jsWeb """ctx = ${canvas}.getContext("2d");
-           ctx.setTransform(${matrix});"""
+extern io def setTransform(ctx: Context2D, matrix: DOMMatrix): Unit =
+  jsWeb "${ctx}.setTransform(${matrix});"
 
 extern type IdleDeadline
 
@@ -102,3 +120,9 @@ extern io def requestIdleCallback(callback: (IdleDeadline) => Unit at {io, globa
   jsWeb "window.requestIdleCallback(deadline => $effekt.runToplevel((ks, k) => ${callback}(deadline, ks, k)))"
 
 extern io def getTime(): Int = jsWeb "Date.now()"
+
+extern io def windowWidth(): Int = 
+  jsWeb "window.innerWidth"
+
+extern io def windowHeight(): Int =
+  jsWeb "window.innerHeight"
