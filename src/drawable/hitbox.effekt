@@ -1,4 +1,4 @@
-module shapes/hitbox
+module drawable/hitbox
 
 import src/vec2d
 import src/utils

@@ -1,6 +1,6 @@
 module game/player
 
-import src/shapes/simple
+import src/drawable/simple
 
 record Player(drawable: SimpleDrawable, gun: SimpleDrawable, health: Int, speed: Double)
 

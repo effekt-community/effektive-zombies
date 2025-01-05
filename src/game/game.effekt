@@ -7,15 +7,17 @@ import src/game/gametimer
 import src/game/player
 import src/game/score
 import src/ffi
-import src/text
+import src/drawable/text
 import src/utils
 import src/vec2d
-import src/shapes/manipulated
-import src/shapes/simple
+import src/drawable/manipulated
+import src/drawable/image
+import src/drawable/simple
 
 interface Canvas {
   def draw(drawable: ManipulatedDrawable): Unit
   def write(text: Text): Unit
+  def drawImageWithName(name: String, pos: Vec2d): Unit
   def clear(): Unit
 }
 
@@ -187,6 +189,68 @@ def render(game: GameState): Unit / { Canvas, Input } = {
     gunAngle, None()
   ))
   game.objects.foreach { o => do draw(o.getHitbox()) }
+
+  renderUI(game)
+}
+
+def renderUI(game: GameState): Unit / Canvas = {
+  val scoreDigits = digits(game.score.score)
+  do drawImageWithName(SCORE_KEY, SCORE_POS)
+  drawDigits(scoreDigits, SCORE_DIGITS, SCORE_POS + fromInt(SCORE_WIDTH, 0))
+
+  val comboDigits = digits(game.score.combo)
+  val comboDigitsSize = comboDigits.size
+  do drawImageWithName(COMBO_KEY, COMBO_POS)
+  drawDigits(
+    comboDigits, comboDigitsSize, 
+    COMBO_POS - fromInt(comboDigitsSize * DIGIT_WIDTH, 0)
+  )
+
+  val waveDigits = digits(game.wave)
+  do drawImageWithName(WAVE_KEY, WAVE_POS)
+  drawDigits(waveDigits, WAVE_DIGITS, WAVE_POS + fromInt(WAVE_WIDTH, 0))
+
+  val life = game.player.health
+  val hearts = fill(life, HEART_KEY)
+  hearts.nextToEachOther(LIFE_POS, HEART_WIDTH + HEART_PADDING)
+}
+
+def drawDigits(rawDigits: List[Int], howMany: Int, startingWhere: Vec2d): Unit / Canvas = {
+  def toName(digit: Int): String = digit match {
+    case 0 => ZERO_KEY
+    case 1 => ONE_KEY
+    case 2 => TWO_KEY
+    case 3 => THREE_KEY
+    case 4 => FOUR_KEY
+    case 5 => FIVE_KEY
+    case 6 => SIX_KEY
+    case 7 => SEVEN_KEY
+    case 8 => EIGHT_KEY
+    case _ => NINE_KEY
+  }
+  val digits = fill(howMany - rawDigits.size(), 0)
+              .append(rawDigits.take(SCORE_DIGITS))
+              .map{ d => d.toName }
+  digits.nextToEachOther(startingWhere, DIGIT_WIDTH)
+}
+
+def nextToEachOther(imageNames: List[String], from: Vec2d, width: Int): Unit / Canvas = {
+  var pos = from
+  imageNames.foreach { imageName =>
+    do drawImageWithName(imageName, pos)
+    pos = pos + fromInt(width, 0)
+  }
+} 
+
+def digits(n: Int): List[Int] = {
+  var remainder = n
+  var digits = Nil[Int]()
+  while(remainder != 0) {
+    val digit = remainder.mod(10)
+    digits = Cons(digit, digits)
+    remainder = remainder / 10
+  }
+  if (digits.isEmpty) 0.singleton else digits
 }
 
 def renderDeathScreen(): Unit / Canvas = {

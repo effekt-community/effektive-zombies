@@ -1,6 +1,6 @@
 module game/gameObject
 
-import src/shapes/manipulated
+import src/drawable/manipulated
 import src/vec2d
 
 type GameObject {

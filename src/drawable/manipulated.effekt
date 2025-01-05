@@ -1,7 +1,7 @@
-module shapes/manipulated
+module drawable/manipulated
 
-import src/shapes/hitbox
-import src/shapes/simple
+import src/drawable/hitbox
+import src/drawable/simple
 import src/vec2d
 
 type ManipulatedDrawable {

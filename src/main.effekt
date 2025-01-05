@@ -1,9 +1,10 @@
 module main
 
 import mutable/map
-import src/shapes/hitbox
-import src/shapes/manipulated
-import src/shapes/simple
+import src/drawable/hitbox
+import src/drawable/manipulated
+import src/drawable/simple
+import src/drawable/image
 import src/game/constants
 import src/game/game
 import src/game/gameobject
@@ -11,7 +12,7 @@ import src/game/gamestate
 import src/game/player
 import src/game/score
 import src/ffi
-import src/text
+import src/drawable/text
 import src/utils
 import src/vec2d
 
@@ -33,6 +34,10 @@ def main(): Unit = {
     val timeElapsed = now - lastFrameTimeStamp.get()
     lastFrameTimeStamp.set(now)
     timeElapsed
+  }
+
+  val loadedImages = imagesToLoad.map { 
+    case (key, path) => (key, loadImage(path)) 
   }
 
   def idleCallback(deadline: IdleDeadline): Unit = {
@@ -82,6 +87,18 @@ def main(): Unit = {
         )
         resume(())
       }
+      def drawImageWithName(imageName, pos) = {
+        with on[MissingValue].report
+        val loadedImage = loadedImages.Immutable::get(imageName)
+        if (loadedImage.isLoaded()) {
+          ctx.get.drawImage(
+            loadedImage,
+            pos.x.toInt,
+            pos.y.toInt
+          )
+        }
+        resume(())
+      }
       def clear = { ctx.get.clear(); resume(()) }
     } with Input {
       def isPressed(key) = resume(keysPressed.get(key).getOrElse { false })
@@ -99,11 +116,17 @@ def main(): Unit = {
     keysPressed.update(event.getKey(), false)
 
   def mouseMoveHandler(event: Event): Unit = {
-    val xRatio = GAME_WIDTH.toDouble / displayedWidth.get.toDouble 
-    val yRatio = GAME_HEIGHT.toDouble / displayedHeight.get.toDouble
-    val x = event.getClientX() * xRatio
-    val y = event.getClientY() * yRatio
-    mousePos.set(Vec2d(x, y))
+    val mousePosInWindow = Vec2d(event.getClientX(), event.getClientY())
+    val displayedSizes = fromInt(displayedWidth.get, displayedHeight.get)
+    val canvasOriginRelativeToWindow = Vec2d(
+      (windowWidth().toDouble - displayedSizes.x) / 2.0,
+      (windowHeight().toDouble - displayedSizes.y) / 2.0
+    )
+    val xRatio = GAME_WIDTH.toDouble / displayedSizes.x
+    val yRatio = GAME_HEIGHT.toDouble / displayedSizes.y
+    val mousePosInGame = 
+      (mousePosInWindow - canvasOriginRelativeToWindow) * Vec2d(xRatio, yRatio)
+    mousePos.set(mousePosInGame)
   }
   def mouseDownHandler(event: Event): Unit = {
     val leftButtonPressed = event.getButton() == 0

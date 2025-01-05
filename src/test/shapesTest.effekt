@@ -3,9 +3,9 @@ module shapesTest
 import test
 import mutable/map
 import src/vec2d
-import src/shapes/hitbox
-import src/shapes/manipulated
-import src/shapes/simple
+import src/drawable/hitbox
+import src/drawable/manipulated
+import src/drawable/simple
 
 def shapesSuite() = suite("shapes") {
   val inner = Simple(Circle(fromInt(1, 1), 1.0, Red()))

@@ -11,8 +11,8 @@ import src/game/gamestate
 import src/game/score
 import src/utils
 import src/vec2d
-import src/shapes/manipulated
-import src/shapes/simple
+import src/drawable/manipulated
+import src/drawable/simple
 
 def gameSuite() = suite("game") {
   val DUMMY_PLAYER = Player(

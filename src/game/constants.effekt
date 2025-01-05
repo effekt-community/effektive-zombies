@@ -4,9 +4,9 @@ import src/game/score
 import src/game/gamestate
 import src/game/gametimer
 import src/game/player
-import src/shapes/simple
-import src/shapes/manipulated
-import src/text
+import src/drawable/simple
+import src/drawable/manipulated
+import src/drawable/text
 import src/utils
 import src/vec2d
 
@@ -20,7 +20,7 @@ def fittingSizes(width: Int, height: Int): (Int, Int) = {
   }
 }
 
-val GAME_WIDTH = 384
+val GAME_WIDTH = 768
 val GAME_HEIGHT = (GAME_WIDTH.toDouble / ASPECT_RATIO).toInt()
 val GAME_CENTER = fromInt(GAME_WIDTH / 2, GAME_HEIGHT / 2)
 
@@ -73,6 +73,58 @@ val START_TIMERS = GameTimer(
 val START_GAME = GameState(START_PLAYER, [], START_TIMERS, START_WAVE, START_SCORE)
 
 //------------------- UI -------------------
+
+val SCORE_DIGITS = 6
+val DIGIT_WIDTH = 16
+val SCORE_WIDTH = 4 * 16
+val SCORE_POS = fromInt(GAME_WIDTH - SCORE_WIDTH - SCORE_DIGITS * DIGIT_WIDTH, 0)
+
+val WAVE_DIGITS = 2
+val WAVE_WIDTH = 16
+val WAVE_POS = NULL_VECTOR
+
+val COMBO_WIDTH = 16
+val COMBO_HEIGHT = 16
+val COMBO_POS = fromInt(GAME_WIDTH, GAME_HEIGHT) - fromInt(COMBO_WIDTH, COMBO_HEIGHT)
+
+val HEART_WIDTH = 16
+val HEART_HEIGHT = 16
+val HEART_PADDING = 4
+val LIFE_POS = fromInt(0, GAME_HEIGHT - HEART_HEIGHT)
+
+type Path = String
+val ASSET_PATH = "../assets/"
+val NUMBER_PATH = ASSET_PATH ++ "numbers/"
+val SCORE_KEY = "score"
+val COMBO_KEY = "combo"
+val WAVE_KEY = "wave"
+val HEART_KEY = "heart"
+val ZERO_KEY = "0"
+val ONE_KEY = "1"
+val TWO_KEY = "2"
+val THREE_KEY = "3"
+val FOUR_KEY = "4"
+val FIVE_KEY = "5"
+val SIX_KEY = "6"
+val SEVEN_KEY = "7"
+val EIGHT_KEY = "8"
+val NINE_KEY = "9"
+val imagesToLoad = Immutable::emptyMap[String, Path]()
+                  .Immutable::update(SCORE_KEY, "score.png")
+                  .Immutable::update(COMBO_KEY, "head.png")
+                  .Immutable::update(WAVE_KEY, "wave.png")
+                  .Immutable::update(HEART_KEY, "heart.png")
+                  .Immutable::update(ZERO_KEY, "digit/0.png")
+                  .Immutable::update(ONE_KEY, "digit/1.png")
+                  .Immutable::update(TWO_KEY, "digit/2.png")
+                  .Immutable::update(THREE_KEY, "digit/3.png")
+                  .Immutable::update(FOUR_KEY, "digit/4.png")
+                  .Immutable::update(FIVE_KEY, "digit/5.png")
+                  .Immutable::update(SIX_KEY, "digit/6.png")
+                  .Immutable::update(SEVEN_KEY, "digit/7.png")
+                  .Immutable::update(EIGHT_KEY, "digit/8.png")
+                  .Immutable::update(NINE_KEY, "digit/9.png")
+                  .map { case (k, p) => (k, ASSET_PATH ++ p)}
 val DEATH_BACKGROUND = 
   Simple(Rect(NULL_VECTOR, GAME_WIDTH.toDouble, GAME_HEIGHT.toDouble, Black()))
 
@@ -97,7 +149,7 @@ val RETRY_BUTTON = Rect(
   RETRY_BUTTON_HEIGHT, Green()
 ).centerAt(RETRY_BUTTON_CENTER)
 
-val RETRY_TEXT_WIDTH = 128.0 / CANVAS_RETRY_HEIGHT_FACTOR
+val RETRY_TEXT_WIDTH = 256.0 / CANVAS_RETRY_HEIGHT_FACTOR
 val RETRY_TEXT = Text(
   "Retry", RETRY_BUTTON_CENTER, RETRY_TEXT_WIDTH.toInt(), 
   Serif(), Center(), Middle(), White()

@@ -1,0 +1,6 @@
+module drawable/image
+
+import src/ffi
+import src/vec2d
+
+record Image(image: HTMLImage, position: Vec2d)

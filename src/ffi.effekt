@@ -1,6 +1,6 @@
 module ffi
 
-extern def toDouble(b: Bool): Double = 
+extern pure def toDouble(b: Bool): Double = 
   js "(function() { if (${b}) { return 1; } else { return 0; }})()"
 
 extern type Event
@@ -12,13 +12,13 @@ extern io def addEventListener(eventType: String, callback: Event => Unit at {io
 extern pure def getKey(event: Event): String =
   jsWeb "${event}.key"
 
-extern io def getClientX(event: Event): Double = 
+extern pure def getClientX(event: Event): Double = 
   jsWeb "${event}.clientX"
 
-extern io def getClientY(event: Event): Double =
+extern pure def getClientY(event: Event): Double =
   jsWeb "${event}.clientY"
 
-extern io def getButton(event: Event): Int =
+extern pure def getButton(event: Event): Int =
   jsWeb "${event}.button"
 
 extern type Context2D
@@ -113,6 +113,21 @@ extern io def getTransform(ctx: Context2D): DOMMatrix =
 
 extern io def setTransform(ctx: Context2D, matrix: DOMMatrix): Unit =
   jsWeb "${ctx}.setTransform(${matrix});"
+
+extern type HTMLImage
+
+extern io def loadImage(path: String): HTMLImage = 
+  jsWeb """(function(){
+  image = new Image();
+  image.src = ${path};
+  return image;
+  })()"""
+
+extern io def isLoaded(image: HTMLImage): Bool =
+  jsWeb "${image}.complete"
+
+extern io def drawImage(ctx: Context2D, image: HTMLImage, dx: Int, dy: Int): Unit =
+  jsWeb "${ctx}.drawImage(${image}, ${dx}, ${dy})"
 
 extern type IdleDeadline
 

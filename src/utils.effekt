@@ -57,3 +57,35 @@ def findIndex[T](list: List[T], predicate: T => Bool at {}): Int = {
 }
 
 def almostEqual(d1: Double, d2: Double, epsilon: Double): Bool = abs(d1 - d2) < epsilon
+
+namespace Immutable {
+  type Map[K, V] = List[(K, V)]
+
+  def emptyMap[K, V]: Immutable::Map[K, V] = Nil()
+
+  def update[K, V](
+    map: Immutable::Map[K, V], key: K, value: V
+  ): Immutable::Map[K, V] = {
+    def predicate(pair: (K, V)): Bool = {
+      val (k, v) = pair
+      k.equals(key)
+    }
+    val keyIndex = findIndex(map, predicate)
+    keyIndex match {
+      case -1 => Cons((key, value), map)
+      case n => map.updateAt(n) { _ => (key, value) }
+    }
+  }
+  
+  def get[K, V](map: Immutable::Map[K, V], key: K): V / Exception[MissingValue] = {
+    def predicate(pair: (K, V)): Bool = {
+      val (k, v) = pair
+      k.equals(key)
+    }
+    val keyIndex = map.findIndex(predicate)
+    val (_, v) = try { 
+      map.get(keyIndex)
+    } with Exception[OutOfBounds] { def raise(_, _) = missingValue() }
+    v
+  }
+}

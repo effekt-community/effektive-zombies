@@ -1,6 +1,6 @@
-module shapes/simple
+module drawable/simple
 
-import src/shapes/hitbox
+import src/drawable/hitbox
 import src/vec2d
 
 type Color {
