@@ -31,7 +31,11 @@ val KEY_DOWN = "keydown"
 val KEY_UP = "keyup"
 val MOUSE_MOVE = "mousemove"
 val MOUSE_DOWN = "mousedown"
+val MOUSE_UP = "mouseup"
 val RESIZE = "resize"
+
+//custom keys
+val LEFT_CLICK = "leftclick"
 
 //------------------- GameState -------------------
 val CANVAS_PLAYER_FACTOR = 15.0
@@ -63,17 +67,27 @@ val START_WAVE_TIMER = 10
 
 val ZOMBIE_SPAWN_INTERVAL = 1 * SECOND_IN_MS
 
+val BULLET_INTERVAL = SECOND_IN_MS / 8
+
 val START_SCORE = Score(0, 0, 0)
 
 val START_TIMERS = GameTimer(
   Timer(ZOMBIE_SPAWN_INTERVAL),
-  Timer(START_WAVE_TIMER)
+  Timer(START_WAVE_TIMER),
+  Timer(BULLET_INTERVAL)
 )
 
-val START_GAME = GameState(START_PLAYER, [], START_TIMERS, START_WAVE, START_SCORE)
+val START_MENU = Main()
+
+val START_GAME = GameState(
+  START_PLAYER, [], 
+  START_TIMERS, START_WAVE,
+  START_SCORE, START_MENU
+)
+
+val START_IN_GAME = START_GAME.changeMenu(InGame())
 
 //------------------- UI -------------------
-
 val SCORE_DIGITS = 6
 val DIGIT_WIDTH = 16
 val SCORE_WIDTH = 4 * 16
@@ -125,14 +139,29 @@ val imagesToLoad = Immutable::emptyMap[String, Path]()
                   .Immutable::update(EIGHT_KEY, "digit/8.png")
                   .Immutable::update(NINE_KEY, "digit/9.png")
                   .map { case (k, p) => (k, ASSET_PATH ++ p)}
+
+def digitKey(digit: Int): String = digit match {
+  case 0 => ZERO_KEY
+  case 1 => ONE_KEY
+  case 2 => TWO_KEY
+  case 3 => THREE_KEY
+  case 4 => FOUR_KEY
+  case 5 => FIVE_KEY
+  case 6 => SIX_KEY
+  case 7 => SEVEN_KEY
+  case 8 => EIGHT_KEY
+  case _ => NINE_KEY
+}
+
 val DEATH_BACKGROUND = 
   Simple(Rect(NULL_VECTOR, GAME_WIDTH.toDouble, GAME_HEIGHT.toDouble, Black()))
 
-val YOU_DIED_OFFSET = GAME_HEIGHT / 8 
+val YOU_DIED_GAME_CENTER_OFFSET = fromInt(0, (GAME_HEIGHT / 8).neg) 
 val YOU_DIED_SIZE = GAME_HEIGHT / 9 
+val YOU_DIED_POS = GAME_CENTER + YOU_DIED_GAME_CENTER_OFFSET
 val YOU_DIED = Text(
   "You Died",
-  GAME_CENTER - fromInt(0, YOU_DIED_OFFSET),
+  YOU_DIED_POS,
   YOU_DIED_SIZE,
   Serif(),
   Center(),
@@ -153,4 +182,34 @@ val RETRY_TEXT_WIDTH = 256.0 / CANVAS_RETRY_HEIGHT_FACTOR
 val RETRY_TEXT = Text(
   "Retry", RETRY_BUTTON_CENTER, RETRY_TEXT_WIDTH.toInt(), 
   Serif(), Center(), Middle(), White()
+)
+
+val RETRY_INFO_CENTER = GAME_CENTER + 0.5 * YOU_DIED_GAME_CENTER_OFFSET
+val RETRY_INFO_CENTER_PADDING = fromInt(2 * DIGIT_WIDTH, 0)
+val RETRY_SCORE_POS = 
+  RETRY_INFO_CENTER - RETRY_INFO_CENTER_PADDING * 0.5
+                         - fromInt(DIGIT_WIDTH * SCORE_DIGITS, 0) //digits
+                         - fromInt(SCORE_WIDTH, 0) //score text
+val RETRY_MAX_COMBO_START_POS = 
+  RETRY_INFO_CENTER + RETRY_INFO_CENTER_PADDING * 0.5
+
+val CANVAS_EFFEKTIVE_ZOMBIES_FACTOR = 3.5
+val EFFEKTIVE_ZOMBIES_SIZE = YOU_DIED_SIZE
+val EFFEKTIVE_ZOMBIES_OFFSET = YOU_DIED_GAME_CENTER_OFFSET
+val EFFEKTIVE_ZOMBIES = Text(
+  "Effektive Zombies",
+  GAME_CENTER + EFFEKTIVE_ZOMBIES_OFFSET,
+  EFFEKTIVE_ZOMBIES_SIZE,
+  Serif(),
+  Center(),
+  Middle(),
+  Red()
+)
+
+val PLAY_BUTTON = RETRY_BUTTON.changeColor(Black())
+val PLAY_BUTTON_CENTER = RETRY_BUTTON_CENTER
+val PLAY_TEXT_SIZE = RETRY_TEXT_WIDTH
+val PLAY_TEXT = Text(
+  "Play", PLAY_BUTTON_CENTER, PLAY_TEXT_SIZE.toInt(),
+  Serif(), Center(), Middle(), White()  
 )

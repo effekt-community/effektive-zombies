@@ -11,6 +11,7 @@ import src/drawable/text
 import src/utils
 import src/vec2d
 import src/drawable/manipulated
+import src/drawable/hitbox
 import src/drawable/image
 import src/drawable/simple
 
@@ -78,6 +79,19 @@ def spawnZombie(game: GameState): GameObject / random = {
   zombie
 }
 
+def spawnBullet(player: Player): List[GameObject] / Input = {
+  if (do isPressed(LEFT_CLICK)) {
+    val playerCenter = player.drawable.getCenter()
+    val gunAngle = angleClockwise(do mousePos() - playerCenter)
+    val bulletDrawable = player.gun.changeColor(Black())
+    val bullet = Bullet(
+      Rotate(Simple(bulletDrawable), gunAngle, Some(playerCenter)),
+      Vec2d(BULLET_SPEED, 0.0).rotate(gunAngle)
+    )
+    [bullet]
+  } else Nil()
+}
+
 def wasdDirection(): Vec2d / Input = {
   val wPressed = do isPressed("w") || do isPressed("W")
   val aPressed = do isPressed("a") || do isPressed("A")
@@ -131,66 +145,101 @@ def shooting(objects: List[GameObject]): (List[GameObject], Int, Bool) = {
   (alive.append(remainingBullets), dead.size, outOfRange.nonEmpty)
 }
 
-def update(game: GameState, dt: Int): GameState / { Input, random } = {
-  val player = game.player
-  val movedPlayer = player.move(dt)
-  val objects = game.objects
-  val timers = game.timers
-  val wave = game.wave
-  val score = game.score
+def update(game: GameState, dt: Int): GameState / { Input, random } = game.menu match {
+  case Main() => 
+    if (do isPressed(LEFT_CLICK) && do mousePos().isInside(PLAY_BUTTON.toHitbox()))
+    START_IN_GAME else game
+  case Retry() => 
+    if (do isPressed(LEFT_CLICK) && do mousePos().isInside(RETRY_BUTTON.toHitbox())) 
+    START_IN_GAME else game
+  case InGame() =>
+    val player = game.player
+    val movedPlayer = player.move(dt)
+    val objects = game.objects
+    val timers = game.timers
+    val wave = game.wave
+    val score = game.score
 
-  val (remaining, deadZombies, bulletMissed) = shooting(objects)
+    val (updatedBulletTimer, shotBullet) = 
+      try { timers.bulletTimer.timer(dt, Nil[GameObject]) }
+      with elapsed[List[GameObject]] {
+        val bullet = spawnBullet(player)
+        val timer = if (bullet.isEmpty) Timer(0) else Timer(BULLET_INTERVAL) 
+        (timer, bullet)
+      }
 
-  val (damagingZombies, remainingObjects) = remaining.partition {
-    case Zombie(hitbox, _) => hitbox.collides(Simple(player.drawable))
-    case _ => false
-  }
+    val (remaining, deadZombies, bulletMissed) = 
+      shooting(shotBullet.append(objects))
 
-  val playerHealthLoss = damagingZombies.size
-
-  val movedObjects = remainingObjects.map {
-    case Zombie(h, m) =>
-      val zombieCenter = h.getCenter()
-      val zombiePlayerVec = player.drawable.getCenter() - zombieCenter
-      val missingAngle = angleClockwise(zombiePlayerVec) - angleClockwise(m)
-      val newHitbox = Rotate(h, missingAngle, None()).collapseRotations()
-      Zombie(newHitbox, m.rotate(missingAngle)).move(dt)
-    case o => o.move(dt)
-  }
-
-  val (updatedWaveTimer, updatedWave) = 
-    try { timers.waveTimer.timer[Int](deadZombies, wave) }
-    with elapsed[Int] {
-      val newWave = inc(wave)
-      (Timer(START_WAVE_TIMER * newWave), newWave)
+    val (damagingZombies, remainingObjects) = remaining.partition {
+      case Zombie(hitbox, _) => hitbox.collides(Simple(player.drawable))
+      case _ => false
     }
 
-  val (updatedZombieTimer, spawnedZombie) = 
-    try { timers.zombieTimer.timer(dt, Nil[GameObject]) }
-    with elapsed[List[GameObject]] { 
-      (Timer(ZOMBIE_SPAWN_INTERVAL / updatedWave), [spawnZombie(game)])
+    val playerHealthLoss = damagingZombies.size
+
+    val movedObjects = remainingObjects.map {
+      case Zombie(h, m) =>
+        val zombieCenter = h.getCenter()
+        val zombiePlayerVec = player.drawable.getCenter() - zombieCenter
+        val missingAngle = angleClockwise(zombiePlayerVec) - angleClockwise(m)
+        val newHitbox = Rotate(h, missingAngle, None()).collapseRotations()
+        Zombie(newHitbox, m.rotate(missingAngle)).move(dt)
+      case o => o.move(dt)
     }
 
-  val updatedPlayer = movedPlayer.changeHealth(playerHealthLoss.neg)
-                      .keepInsideScreen()
-  val updatedObjects = spawnedZombie.append(movedObjects)
-  val updatedTimers = GameTimer(updatedZombieTimer, updatedWaveTimer)
-  val updatedScore = score.update(playerHealthLoss > 0 || bulletMissed, deadZombies)
-  GameState(updatedPlayer, updatedObjects, updatedTimers, updatedWave, updatedScore)
+    val (updatedWaveTimer, updatedWave) = 
+      try { timers.waveTimer.timer[Int](deadZombies, wave) }
+      with elapsed[Int] {
+        val newWave = inc(wave)
+        (Timer(START_WAVE_TIMER * newWave), newWave)
+      }
+
+    val (updatedZombieTimer, spawnedZombie) = 
+      try { timers.zombieTimer.timer(dt, Nil[GameObject]) }
+      with elapsed[List[GameObject]] { 
+        (Timer(ZOMBIE_SPAWN_INTERVAL / updatedWave), [spawnZombie(game)])
+      }
+
+    val updatedPlayer = movedPlayer.changeHealth(playerHealthLoss.neg)
+                        .keepInsideScreen()
+    val updatedObjects = spawnedZombie.append(movedObjects)
+    val updatedTimers = 
+      GameTimer(updatedZombieTimer, updatedWaveTimer, updatedBulletTimer)
+    val updatedScore = score.update(playerHealthLoss > 0 || bulletMissed, deadZombies)
+    val updatedMenu = if (updatedPlayer.isAlive().not) Retry() else game.menu
+    GameState(
+      updatedPlayer, 
+      updatedObjects, 
+      updatedTimers, 
+      updatedWave, 
+      updatedScore,
+      updatedMenu
+    )
 }
 
-def render(game: GameState): Unit / { Canvas, Input } = {
-  val gunAngle = 
-    angleClockwise(do mousePos() - game.player.drawable.getCenter())
-  do clear()
-  do draw(Rotate(
-    Compose(Simple(game.player.drawable),
-    Simple(game.player.gun)), 
-    gunAngle, None()
-  ))
-  game.objects.foreach { o => do draw(o.getHitbox()) }
+def render(game: GameState): Unit / { Canvas, Input } = game.menu match {
+  case Main() => renderMainMenu()
+  case InGame() => 
+    val gunAngle = 
+      angleClockwise(do mousePos() - game.player.drawable.getCenter())
+    do clear()
+    do draw(Rotate(
+      Compose(Simple(game.player.drawable),
+      Simple(game.player.gun)), 
+      gunAngle, None()
+    ))
+    game.objects.foreach { o => do draw(o.getHitbox()) }
 
-  renderUI(game)
+    renderUI(game)
+  case Retry() => renderDeathScreen(game.score)
+}
+
+def renderMainMenu(): Unit / Canvas = {
+  do clear()
+  do write(EFFEKTIVE_ZOMBIES)
+  do draw(Simple(PLAY_BUTTON))
+  do write(PLAY_TEXT)
 }
 
 def renderUI(game: GameState): Unit / Canvas = {
@@ -216,31 +265,26 @@ def renderUI(game: GameState): Unit / Canvas = {
 }
 
 def drawDigits(rawDigits: List[Int], howMany: Int, startingWhere: Vec2d): Unit / Canvas = {
-  def toName(digit: Int): String = digit match {
-    case 0 => ZERO_KEY
-    case 1 => ONE_KEY
-    case 2 => TWO_KEY
-    case 3 => THREE_KEY
-    case 4 => FOUR_KEY
-    case 5 => FIVE_KEY
-    case 6 => SIX_KEY
-    case 7 => SEVEN_KEY
-    case 8 => EIGHT_KEY
-    case _ => NINE_KEY
-  }
   val digits = fill(howMany - rawDigits.size(), 0)
               .append(rawDigits.take(SCORE_DIGITS))
-              .map{ d => d.toName }
+              .map{ d => digitKey(d) }
   digits.nextToEachOther(startingWhere, DIGIT_WIDTH)
 }
 
-def nextToEachOther(imageNames: List[String], from: Vec2d, width: Int): Unit / Canvas = {
+def nextToEachOther(
+  imageNames: List[String],
+  from: Vec2d,
+  widths: List[Int]
+): Unit / Canvas = {
   var pos = from
-  imageNames.foreach { imageName =>
+  imageNames.zip(widths).foreach { case (imageName, width) =>
     do drawImageWithName(imageName, pos)
     pos = pos + fromInt(width, 0)
   }
-} 
+}
+
+def nextToEachOther(imageNames: List[String], from: Vec2d, width: Int): Unit / Canvas =
+  nextToEachOther(imageNames, from, fill(imageNames.size, width))
 
 def digits(n: Int): List[Int] = {
   var remainder = n
@@ -253,9 +297,28 @@ def digits(n: Int): List[Int] = {
   if (digits.isEmpty) 0.singleton else digits
 }
 
-def renderDeathScreen(): Unit / Canvas = {
+def renderDeathScreen(score: Score): Unit / Canvas = {
   do draw(DEATH_BACKGROUND)
   do write(YOU_DIED)
+  
+  val scoreDigits = digits(score.score)
+  val maxComboDigits = digits(score.maxCombo).map{digitKey}
+
+  val scoreInfoWidth = SCORE_WIDTH + SCORE_DIGITS * DIGIT_WIDTH
+  val comboInfoWidth = COMBO_WIDTH + maxComboDigits.size * DIGIT_WIDTH
+  val offset = fromInt((scoreInfoWidth - comboInfoWidth) / 2, 0)
+
+  val realScorePos = RETRY_SCORE_POS + offset
+  do drawImageWithName(SCORE_KEY, realScorePos)
+  drawDigits(scoreDigits, SCORE_DIGITS, realScorePos + fromInt(SCORE_WIDTH, 0))
+
+  val realComboStartPos = RETRY_MAX_COMBO_START_POS + offset
+  nextToEachOther(
+    maxComboDigits.append(COMBO_KEY.singleton),
+    realComboStartPos,
+    fill(maxComboDigits.size, DIGIT_WIDTH).append(COMBO_WIDTH.singleton)
+  )
+
   do draw(Simple(RETRY_BUTTON))
   do write(RETRY_TEXT)
 }

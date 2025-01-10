@@ -2,4 +2,4 @@ module game/gametimer
 
 import src/utils
 
-record GameTimer(zombieTimer: Timer, waveTimer: Timer)
+record GameTimer(zombieTimer: Timer, waveTimer: Timer, bulletTimer: Timer)

@@ -5,16 +5,29 @@ import src/game/gameobject
 import src/game/gametimer
 import src/game/score
 
+type Menu {
+  Main()
+  InGame()
+  Retry()
+}
+
 record GameState(
   player: Player,
   objects: List[GameObject],
   timers: GameTimer,
   wave: Int,
-  score: Score
+  score: Score,
+  menu: Menu
 )
 
 def addObject(game: GameState, gameObject: GameObject): GameState = 
   GameState(
     game.player, Cons(gameObject, game.objects), 
-    game.timers, game.wave, game.score
+    game.timers, game.wave, game.score, game.menu
+  )
+
+def changeMenu(game: GameState, to: Menu): GameState =
+  GameState(
+    game.player, game.objects, game.timers,
+    game.wave, game.score, to
   )

@@ -1,5 +1,26 @@
 module utils
 
+def flatten[T](optionOption: Option[Option[T]]): Option[T] = 
+  optionOption.getOrElse{None()}
+
+record Interval(start: Int, end: Option[Int])
+
+val EMPTY_INTERVAL = Interval(0, Some(-1))
+
+def show(interval: Interval): String = {
+  val start: String = show(interval.start)
+  val end: String = interval.end.option::map{i => show(i)}.getOrElse{"inf"}
+  "[" ++ start ++ ", " ++ end ++ "]"
+}
+
+def overlaps(interval1: Interval, interval2: Interval): Bool =
+  interval1.start.in(interval2) || interval2.start.in(interval1)
+
+def in(x: Int, interval: Interval): Bool = {
+  val end: Int = interval.end.getOrElse{() => x}
+  (x >= interval.start) && (x <= end)
+}
+
 effect random(): Double
 
 record Timer(left: Int)

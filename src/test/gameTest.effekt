@@ -20,9 +20,10 @@ def gameSuite() = suite("game") {
     Rect(NULL_VECTOR, 0.0, 0.0, Black()), 0, 0.0
   )
   val DUMMY_TIMER = Timer(0)
-  val DUMMY_TIMERS = GameTimer(DUMMY_TIMER, DUMMY_TIMER)
+  val DUMMY_TIMERS = GameTimer(DUMMY_TIMER, DUMMY_TIMER, DUMMY_TIMER)
   val DUMMY_SCORE = Score(0, 0, 0)
-  val DUMMYGAME = GameState(DUMMY_PLAYER, [], DUMMY_TIMERS, 0, DUMMY_SCORE)
+  val DUMMYGAME = 
+    GameState(DUMMY_PLAYER, [], DUMMY_TIMERS, 0, DUMMY_SCORE, InGame())
 
   def pseudoHandler { f: () => Unit / {Input, random} }: Unit = {
     try { f() }

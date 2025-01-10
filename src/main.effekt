@@ -25,32 +25,24 @@ def main(): Unit = {
 
   val game = ref[GameState](START_GAME)
 
-  val keysPressed = emptyMap[String, Bool]()
+  val keysPressed = emptyMap[String, Interval]()
   val mousePos = ref[Vec2d](NULL_VECTOR)
   val lastFrameTimeStamp = ref[Int](getTime())
-
-  def timeSinceLastFrame(): Int = {
-    val now = getTime()
-    val timeElapsed = now - lastFrameTimeStamp.get()
-    lastFrameTimeStamp.set(now)
-    timeElapsed
-  }
 
   val loadedImages = imagesToLoad.map { 
     case (key, path) => (key, loadImage(path)) 
   }
 
   def idleCallback(deadline: IdleDeadline): Unit = {
+    val currentFrameTimeStamp = getTime()
+    val frameInterval = 
+      Interval(lastFrameTimeStamp.get(), Some(currentFrameTimeStamp))
+    val dt = currentFrameTimeStamp - lastFrameTimeStamp.get()
+    lastFrameTimeStamp.set(currentFrameTimeStamp)
     try {
-      val dt = timeSinceLastFrame()
-      if (game.get.player.isAlive) {
-        val updatedGame = game.get.update(dt) 
-        render(updatedGame)
-        game.set(updatedGame)
-      } else {
-        println(show(game.get.score))
-        renderDeathScreen()
-      }
+      val updatedGame = game.get.update(dt) 
+      render(updatedGame)
+      game.set(updatedGame)
     } with Canvas {
       def draw(drawable) = {
         def drawSimple(d: SimpleDrawable): Unit = d match {
@@ -101,7 +93,11 @@ def main(): Unit = {
       }
       def clear = { ctx.get.clear(); resume(()) }
     } with Input {
-      def isPressed(key) = resume(keysPressed.get(key).getOrElse { false })
+      def isPressed(key) = {
+        val keyInterval = keysPressed.get(key).getOrElse{() => EMPTY_INTERVAL}
+        val pressed = frameInterval.overlaps(keyInterval)
+        resume(pressed)
+      }
       def mousePos() = resume(mousePos.get)
     } with random {
       resume(random())
@@ -111,9 +107,14 @@ def main(): Unit = {
   }
 
   def pressedHandler(event: Event): Unit = 
-    keysPressed.update(event.getKey(), true)
-  def releasedHandler(event: Event): Unit = 
-    keysPressed.update(event.getKey(), false)
+    keysPressed.update(event.getKey(), Interval(getTime(), None()))
+
+  def releasedHandler(event: Event): Unit = {
+    val interval = 
+      keysPressed.get(event.getKey()).getOrElse{() => EMPTY_INTERVAL}
+    val addedEnd = Interval(interval.start, Some(getTime()))
+    keysPressed.update(event.getKey(), addedEnd)
+  }
 
   def mouseMoveHandler(event: Event): Unit = {
     val mousePosInWindow = Vec2d(event.getClientX(), event.getClientY())
@@ -128,22 +129,22 @@ def main(): Unit = {
       (mousePosInWindow - canvasOriginRelativeToWindow) * Vec2d(xRatio, yRatio)
     mousePos.set(mousePosInGame)
   }
+
   def mouseDownHandler(event: Event): Unit = {
-    val leftButtonPressed = event.getButton() == 0
-    if (leftButtonPressed) {
-      val player = game.get.player
-      if (player.isAlive()) {
-        val playerCenter = player.drawable.getCenter()
-        val gunAngle = angleClockwise(mousePos.get - playerCenter)
-        val bulletDrawable = player.gun.changeColor(Black())
-        val bullet = Bullet(
-          Rotate(Simple(bulletDrawable), gunAngle, Some(playerCenter)),
-          Vec2d(BULLET_SPEED, 0.0).rotate(gunAngle)
-        )
-        game.map{g => g.addObject(bullet)}
-      } else if (mousePos.get.isInside(RETRY_BUTTON.toHitbox())) {
-        game.set(START_GAME)
-      }
+    val leftClickPressed = event.getButton() == 0
+    if (leftClickPressed) {
+      val newInterval = Interval(getTime(), None())
+      keysPressed.update(LEFT_CLICK, newInterval)
+    }
+  }
+
+  def mouseUpHandler(event: Event): Unit = {
+    val leftClickReleased = event.getButton() == 0
+    if (leftClickReleased) {
+      val interval = 
+        keysPressed.get(LEFT_CLICK).getOrElse{() => EMPTY_INTERVAL}
+      val addedEnd = Interval(interval.start, Some(getTime()))
+      keysPressed.update(LEFT_CLICK, addedEnd)
     }
   }
 
@@ -158,6 +159,7 @@ def main(): Unit = {
   addEventListener(KEY_UP, releasedHandler)
   addEventListener(MOUSE_MOVE, mouseMoveHandler)
   addEventListener(MOUSE_DOWN, mouseDownHandler)
+  addEventListener(MOUSE_UP, mouseUpHandler)
   addEventListener(RESIZE, resizeHandler)
 
   requestIdleCallback(idleCallback)
