@@ -50,5 +50,25 @@ def toHitbox(d: ManipulatedDrawable): Hitbox = d match {
     HCompose(first.toHitbox(), second.toHitbox())
 }
 
+def compose(s1: SimpleDrawable, s2: SimpleDrawable): ManipulatedDrawable =
+  Compose(Simple(s1), Simple(s2))
+
+def compose(s1: SimpleDrawable, m2: ManipulatedDrawable): ManipulatedDrawable =
+  Compose(Simple(s1), m2)
+
+def wrap(s1: SimpleDrawable): ManipulatedDrawable = Simple(s1)
+
 def collides(d1: ManipulatedDrawable, d2: ManipulatedDrawable): Bool =
   collides(d1.toHitbox(), d2.toHitbox())
+
+def setInner(d: ManipulatedDrawable, to: SimpleDrawable): ManipulatedDrawable = d match {
+  case Simple(_) => Simple(to)
+  case Rotate(inner, rot, rel) => Rotate(inner.setInner(to), rot, rel)
+  case Compose(first, second) => Compose(first.setInner(to), second)
+}
+
+def animate(d: ManipulatedDrawable, dt: Int): ManipulatedDrawable / Animation = d match {
+  case Simple(inner) => Simple(inner.animate(dt))
+  case Rotate(inner, rot, rel) => Rotate(inner.animate(dt), rot, rel)
+  case Compose(first, second) => Compose(first.animate(dt), second.animate(dt))
+}

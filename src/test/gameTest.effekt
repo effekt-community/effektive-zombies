@@ -95,10 +95,10 @@ def gameSuite() = suite("game") {
 
   test("zombie shooting") {
     val SHOT_ZOMBIE_HITBOX = Simple(Rect(Vec2d(50.0, 50.0), 10.0, 10.0, Black()))
-    val SHOT_ZOMBIE = Zombie(SHOT_ZOMBIE_HITBOX, Vec2d(1.0, 1.0))
+    val SHOT_ZOMBIE = Zombie(SHOT_ZOMBIE_HITBOX, Vec2d(1.0, 1.0), Alive())
 
     val ALIVE_HITBOX = Simple(Rect(Vec2d(100.0, 100.0), 10.0, 10.0, Black()))
-    val ALIVE = Zombie(ALIVE_HITBOX, Vec2d(1.0, 1.0))
+    val ALIVE = Zombie(ALIVE_HITBOX, Vec2d(1.0, 1.0), Alive())
 
     val BULLET_HITBOX = Simple(Rect(Vec2d(40.0, 40.0), 20.0, 20.0, Black()))
     val BULLET = Bullet(BULLET_HITBOX, Vec2d(1.0, 1.0))

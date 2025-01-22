@@ -2,6 +2,7 @@ module drawable/simple
 
 import src/drawable/hitbox
 import src/vec2d
+import src/utils
 
 type Color {
   Green()
@@ -17,35 +18,135 @@ def show(color: Color): String = color match {
   case White() => "white"
 }
 
+record Frame(frame: SimpleDrawable, timer: Timer)
+
+def move(frame: Frame, dVec: Vec2d): Frame =
+  Frame(frame.frame.move(dVec), frame.timer)
+
+def moveSrc(frame: Frame, dVec: Vec2d): Frame = 
+  Frame(frame.frame.moveSrc(dVec), frame.timer)
+
+def changeColor(frame: Frame, to: Color): Frame =
+  Frame(frame.frame.changeColor(to), frame.timer)
+
 type SimpleDrawable {
   Rect(upperLeft: Vec2d, width: Double, height: Double, color: Color)
   Circle(center: Vec2d, radius: Double, color: Color)
+  Image(
+    name: String, src: Option[SimpleDrawable], dest: SimpleDrawable, hitbox: Hitbox
+  )
+  Animation(current: Frame, next: List[Frame])
+}
+
+def mapAnimation(
+  animation: SimpleDrawable
+  ) { f: SimpleDrawable => SimpleDrawable }: SimpleDrawable = animation match {
+  case Animation(current, next) => 
+    Animation(
+      Frame(f(current.frame), current.timer),
+      next.map{frame => Frame(f(frame.frame), frame.timer)}
+    )
+  case noAnimation => noAnimation
+}
+
+interface Animation {
+  def finished(): Nothing
+}
+
+def animate(drawable: SimpleDrawable, dt: Int): SimpleDrawable / Animation = drawable match {
+  case Animation(current, next) => 
+    val newCurrTimer = current.timer.elapse(dt)
+    if (newCurrTimer.elapsed()) {
+      next match {
+        case Cons(f, fs) => Animation(f, fs)
+        case Nil() => do finished()
+      }
+    } else {
+      Animation(Frame(current.frame, newCurrTimer), next)
+    }
+  case _ => drawable
+}
+
+def moveSrc(drawable: SimpleDrawable, dVec: Vec2d): SimpleDrawable = drawable match {
+  case Rect(_, _, _, _) => drawable
+  case Circle(_, _, _) => drawable
+  case Image(name, src, dest, hitbox) => 
+    Image(name, src.map{s => s.move(dVec)}, dest, hitbox)
+  case Animation(current, next) => 
+    Animation(current.moveSrc(dVec), next.map{f => f.moveSrc(dVec)})
 }
 
 def changeColor(drawable: SimpleDrawable, to: Color): SimpleDrawable = drawable match {
   case Rect(uL, w, h, _) => Rect(uL, w, h, to)
   case Circle(c, r, _) => Circle(c, r, to)
+  case Image(_, _, _, _) => drawable
+  case Animation(current, next) =>
+    Animation(
+      current.changeColor(to),
+      next.list::map{f => f.changeColor(to)}
+    )
+}
+
+def getWidth(drawable: SimpleDrawable): Double = drawable match {
+  case Rect(_, w, _, _) => w
+  case Circle(_, r, _) => 2.0 * r
+  case Image(_, _, dest, _) => dest.getWidth()
+  case Animation(current, _) => current.frame.getWidth()
+}
+
+def getHeight(drawable: SimpleDrawable): Double = drawable match {
+  case Rect(_, _, h, _) => h
+  case Circle(_, r, _) => 2.0 * r
+  case Image(_, _, dest, _) => dest.getHeight()
+  case Animation(current, _) => current.frame.getHeight()
 }
 
 def getCenter(drawable: SimpleDrawable): Vec2d = drawable match {
   case Rect(upperLeft, width, height, _) => 
     upperLeft + Vec2d(0.5 * width, 0.5 * height)
   case Circle(center, _, _) => center
+  case Image(_, _, dest, _) => dest.getCenter()
+  case Animation(current, _) => current.frame.getCenter()
+}
+
+def getUpperLeft(drawable: SimpleDrawable): Vec2d = drawable match {
+  case Rect(uL, _, _, _) => uL
+  case Circle(center, r, _) => center - Vec2d(r, r)
+  case Image(_, _, dest, _) => dest.getUpperLeft()
+  case Animation(current, _) => current.frame.getUpperLeft()
 }
 
 def centerAt(drawable: SimpleDrawable, center: Vec2d): SimpleDrawable = drawable match {
   case Rect(_, width, height, color) => 
     Rect(center - Vec2d(width / 2.0, height / 2.0), width, height, color)
   case Circle(_, radius, color) => Circle(center, radius, color)
+  case Image(name, src, dest, hitbox) =>
+    val dV = center - dest.getCenter()
+    Image(name, src, dest.centerAt(center), hitbox.move(dV))
+  case Animation(_, _) => drawable.mapAnimation{s => s.centerAt(center)}
+}
+
+def upperLeftAt(drawable: SimpleDrawable, upperLeft: Vec2d): SimpleDrawable = drawable match {
+  case Rect(_, w, h, c) => Rect(upperLeft, w, h, c)
+  case Circle(_, r, c) => Circle(upperLeft + Vec2d(r, r), r, c)
+  case Image(name, src, dest, hitbox) =>
+    val diff = upperLeft - dest.getUpperLeft()
+    Image(name, src, dest.upperLeftAt(upperLeft), hitbox.move(diff))
+  case Animation(_, _) => drawable.mapAnimation{s => s.upperLeftAt(upperLeft)}
 }
 
 def move(drawable: SimpleDrawable, dVec: Vec2d): SimpleDrawable = drawable match {
   case Rect(upperLeft, w, h, c) => Rect(upperLeft + dVec, w, h, c)
   case Circle(center, r, c) => Circle(center + dVec, r, c)
+  case Image(name, src, dest, hitbox) => 
+    Image(name, src, dest.move(dVec), hitbox.move(dVec))
+  case Animation(_, _) => drawable.mapAnimation{s => s.move(dVec)}
 }
 
 def toHitbox(d: SimpleDrawable): Hitbox = d match {
   case Rect(uL, w, h, _) => 
     HRect(uL, uL + Vec2d(w, 0.0), uL + Vec2d(w, h), uL + Vec2d(0.0, h))
   case Circle(center, r, _) => HCircle(center, r)
+  case Image(_, _, _, hitbox) => hitbox
+  case Animation(current, _) => current.frame.toHitbox
 }

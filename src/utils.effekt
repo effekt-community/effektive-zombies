@@ -25,6 +25,10 @@ effect random(): Double
 
 record Timer(left: Int)
 
+def elapse(t: Timer, elapsed: Int): Timer = Timer(t.left - elapsed)
+
+def elapsed(t: Timer): Bool = t.left < 0
+
 effect elapsed[R](): (Timer, R)
 
 def timer[R](t: Timer, elapsed: Int, default: R): (Timer, R) / elapsed[R] = {

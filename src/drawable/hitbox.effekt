@@ -10,6 +10,8 @@ type Hitbox {
   HCompose(h1: Hitbox, h2: Hitbox)
 }
 
+val EMPTY_HITBOX = HRect(NULL_VECTOR, NULL_VECTOR, NULL_VECTOR, NULL_VECTOR)
+
 def infixEq(h1: Hitbox, h2: Hitbox): Bool = (h1, h2) match {
   case (HRect(c11, c12, c13, c14), HRect(c21, c22, c23, c24)) =>
     //check if edges match to each other in some permutation
@@ -31,6 +33,13 @@ def getCenter(h: Hitbox): Vec2d = h match {
   case HRect(c1, c2, c3, c4) => c1 + (c3 - c1) * 0.5
   case HCircle(center, _) => center
   case HCompose(h1, h2) => h1.getCenter()
+}
+
+def move(h: Hitbox, dVec: Vec2d): Hitbox = h match {
+  case HRect(c1, c2, c3, c4) => 
+    HRect(c1 + dVec, c2 + dVec, c3 + dVec, c4 + dVec)
+  case HCircle(center, radius) => HCircle(center + dVec, radius)
+  case HCompose(first, second) => HCompose(first.move(dVec), second.move(dVec))
 }
 
 def rotate(h: Hitbox, angle: Double, relativeTo: Option[Vec2d]): Hitbox = {

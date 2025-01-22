@@ -32,7 +32,7 @@ extern jsWeb """
     canvas.style.width = width + "px";
     canvas.style.height = height + "px";
     ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
     return ctx;
   }
 """
@@ -126,8 +126,23 @@ extern io def loadImage(path: String): HTMLImage =
 extern io def isLoaded(image: HTMLImage): Bool =
   jsWeb "${image}.complete"
 
-extern io def drawImage(ctx: Context2D, image: HTMLImage, dx: Int, dy: Int): Unit =
-  jsWeb "${ctx}.drawImage(${image}, ${dx}, ${dy})"
+extern io def drawImage(
+  ctx: Context2D, image: HTMLImage,
+  dx: Int, dy: Int, 
+  dwidth: Int, dheight: Int
+): Unit =
+  jsWeb "${ctx}.drawImage(${image}, ${dx}, ${dy}, ${dwidth}, ${dheight})"
+
+extern io def drawImage(
+  ctx: Context2D, image: HTMLImage,
+  srcx: Int, srcy: Int,
+  srcwidth: Int, srcheight: Int,
+  dx: Int, dy: Int, 
+  dwidth: Int, dheight: Int
+): Unit =
+  jsWeb """${ctx}.drawImage(
+              ${image}, ${srcx}, ${srcy}, ${srcwidth}, ${srcheight}, 
+              ${dx}, ${dy}, ${dwidth}, ${dheight})"""
 
 extern type IdleDeadline
 

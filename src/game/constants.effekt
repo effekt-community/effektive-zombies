@@ -2,11 +2,13 @@ module game/constants
 
 import src/game/score
 import src/game/gamestate
+import src/game/gameobject
 import src/game/gametimer
 import src/game/player
 import src/drawable/simple
 import src/drawable/manipulated
 import src/drawable/text
+import src/drawable/hitbox
 import src/utils
 import src/vec2d
 
@@ -43,12 +45,13 @@ val PLAYER_START_SPEED = GAME_WIDTH.toDouble / (3 * SECOND_IN_MS).toDouble
 val PLAYER_START_HEALTH = 2
 val PLAYER_GUN_FACTOR = 1.2
 val GUN_WIDTH_HEIGHT_FACTOR = 3.0
-val PLAYER_SIZE = GAME_HEIGHT.toDouble() / CANVAS_PLAYER_FACTOR
+val PLAYER_SIZE = GAME_WIDTH / 96
 val PLAYER_START_POS = GAME_CENTER
-val PLAYER_HITBOX = Circle(PLAYER_START_POS, PLAYER_SIZE, Green())
-val GUN_WIDTH  = PLAYER_SIZE / PLAYER_GUN_FACTOR
+val PLAYER_HITBOX = Circle(PLAYER_START_POS, PLAYER_SIZE.toDouble, Green())
+val GUN_WIDTH  = PLAYER_SIZE.toDouble / PLAYER_GUN_FACTOR
 val GUN_HEIGTH = GUN_WIDTH / GUN_WIDTH_HEIGHT_FACTOR
-val GUN_START_POS = PLAYER_START_POS + Vec2d(PLAYER_SIZE - 1.0, -0.5 * GUN_HEIGTH)
+val GUN_START_POS = PLAYER_START_POS 
+                  + Vec2d(PLAYER_SIZE.toDouble - 1.0, -0.5 * GUN_HEIGTH)
 val GUN = Rect(GUN_START_POS, GUN_WIDTH, GUN_HEIGTH, Black())
 val START_PLAYER = Player(
   PLAYER_HITBOX,
@@ -59,7 +62,8 @@ val START_PLAYER = Player(
 
 val BULLET_SPEED = GAME_WIDTH.toDouble / SECOND_IN_MS.toDouble
 
-val CANVAS_ZOMBIE_FACTOR = CANVAS_PLAYER_FACTOR
+val ZOMBIE_WIDTH = 18.0
+val ZOMBIE_HEIGHT = 20.0
 val ZOMBIE_BASE_SPEED = GAME_WIDTH.toDouble / (10 * SECOND_IN_MS).toDouble
 
 val START_WAVE = 1
@@ -90,11 +94,14 @@ val START_IN_GAME = START_GAME.changeMenu(InGame())
 //------------------- UI -------------------
 val SCORE_DIGITS = 6
 val DIGIT_WIDTH = 16
+val DIGIT_HEIGHT = 16
 val SCORE_WIDTH = 4 * 16
+val SCORE_HEIGHT = 16
 val SCORE_POS = fromInt(GAME_WIDTH - SCORE_WIDTH - SCORE_DIGITS * DIGIT_WIDTH, 0)
 
 val WAVE_DIGITS = 2
 val WAVE_WIDTH = 16
+val WAVE_HEIGHT = 16
 val WAVE_POS = NULL_VECTOR
 
 val COMBO_WIDTH = 16
@@ -108,11 +115,11 @@ val LIFE_POS = fromInt(0, GAME_HEIGHT - HEART_HEIGHT)
 
 type Path = String
 val ASSET_PATH = "../assets/"
-val NUMBER_PATH = ASSET_PATH ++ "numbers/"
 val SCORE_KEY = "score"
 val COMBO_KEY = "combo"
 val WAVE_KEY = "wave"
 val HEART_KEY = "heart"
+val ZOMBIE_KEY = "zombie"
 val ZERO_KEY = "0"
 val ONE_KEY = "1"
 val TWO_KEY = "2"
@@ -124,10 +131,11 @@ val SEVEN_KEY = "7"
 val EIGHT_KEY = "8"
 val NINE_KEY = "9"
 val imagesToLoad = Immutable::emptyMap[String, Path]()
-                  .Immutable::update(SCORE_KEY, "score.png")
-                  .Immutable::update(COMBO_KEY, "head.png")
-                  .Immutable::update(WAVE_KEY, "wave.png")
-                  .Immutable::update(HEART_KEY, "heart.png")
+                  .Immutable::update(SCORE_KEY, "ui/score.png")
+                  .Immutable::update(COMBO_KEY, "ui/head.png")
+                  .Immutable::update(WAVE_KEY, "ui/wave.png")
+                  .Immutable::update(HEART_KEY, "ui/heart.png")
+                  .Immutable::update(ZOMBIE_KEY, "enemies/zombie.png")
                   .Immutable::update(ZERO_KEY, "digit/0.png")
                   .Immutable::update(ONE_KEY, "digit/1.png")
                   .Immutable::update(TWO_KEY, "digit/2.png")
@@ -152,6 +160,85 @@ def digitKey(digit: Int): String = digit match {
   case 8 => EIGHT_KEY
   case _ => NINE_KEY
 }
+
+def digitImage(digit: Int): SimpleDrawable = 
+  Image(
+    digit.digitKey,
+    None(),
+    Rect(NULL_VECTOR, DIGIT_WIDTH.toDouble, DIGIT_HEIGHT.toDouble, Black()),
+    EMPTY_HITBOX
+  )
+
+val SCORE_IMAGE = 
+  Image(
+    SCORE_KEY, 
+    None(),
+    Rect(SCORE_POS, SCORE_WIDTH.toDouble, SCORE_HEIGHT.toDouble, Black()), 
+    EMPTY_HITBOX
+  )
+
+val COMBO_IMAGE = 
+  Image(
+    COMBO_KEY, 
+    None(),
+    Rect(COMBO_POS, COMBO_WIDTH.toDouble, COMBO_HEIGHT.toDouble, Black()),
+    EMPTY_HITBOX
+  )
+
+val WAVE_IMAGE = 
+  Image(
+    WAVE_KEY, 
+    None(),
+    Rect(WAVE_POS, WAVE_WIDTH.toDouble, WAVE_HEIGHT.toDouble, Black()),
+    EMPTY_HITBOX
+  )
+
+val HEART_IMAGE = 
+  Image(
+    HEART_KEY, 
+    None(),
+    Rect(LIFE_POS, HEART_WIDTH.toDouble, HEART_HEIGHT.toDouble, Black()),
+    EMPTY_HITBOX
+  )
+
+val ZOMBIE_ARM_WIDTH = 12.0
+val ZOMBIE_ARM_HEIGHT = 3.0
+val ZOMBIE_ARM_X = 6
+val ZOMBIE_TOP_ARM = 
+  Rect(fromInt(ZOMBIE_ARM_X, 0), ZOMBIE_ARM_WIDTH, ZOMBIE_ARM_HEIGHT, Black())
+val ZOMBIE_BOTTOM_ARM = 
+  Rect(fromInt(ZOMBIE_ARM_X, 17), ZOMBIE_ARM_WIDTH, ZOMBIE_ARM_HEIGHT, Black())
+val ZOMBIE_BODY = Rect(fromInt(0, 2), 16.0, 16.0, Black())
+val ZOMBIE_HITBOX = 
+  ZOMBIE_BODY.compose(ZOMBIE_TOP_ARM.compose(ZOMBIE_BOTTOM_ARM)).toHitbox
+
+val ZOMBIE_ALIVE_SRC = Rect(NULL_VECTOR, ZOMBIE_WIDTH, ZOMBIE_HEIGHT, Black())
+val ZOMBIE_ALIVE_IMG = Image(
+  ZOMBIE_KEY, 
+  Some(ZOMBIE_ALIVE_SRC),
+  Rect(NULL_VECTOR, ZOMBIE_WIDTH, ZOMBIE_HEIGHT, Black()),
+  ZOMBIE_HITBOX
+)
+
+val ZOMBIE_DEATH_FRAME_TIME = SECOND_IN_MS / 8
+val ZOMBIE_DEATH_FIRST_FRAME = Frame(
+  ZOMBIE_ALIVE_IMG,
+  Timer(ZOMBIE_DEATH_FRAME_TIME)
+)
+val ZOMBIE_DEATH_ANIMATION = Animation(
+  ZOMBIE_DEATH_FIRST_FRAME,
+  [
+    ZOMBIE_DEATH_FIRST_FRAME.moveSrc(Vec2d(ZOMBIE_WIDTH, 0.0)),
+    ZOMBIE_DEATH_FIRST_FRAME.moveSrc(Vec2d(2.0 * ZOMBIE_WIDTH, 0.0)),
+    ZOMBIE_DEATH_FIRST_FRAME.moveSrc(Vec2d(3.0 * ZOMBIE_WIDTH, 0.0))
+  ]
+)
+
+def zombieFactory(pos: Vec2d): GameObject = Zombie(
+  Simple(ZOMBIE_ALIVE_IMG.centerAt(pos)), 
+  Vec2d(ZOMBIE_BASE_SPEED, 0.0),
+  Alive()
+)
 
 val DEATH_BACKGROUND = 
   Simple(Rect(NULL_VECTOR, GAME_WIDTH.toDouble, GAME_HEIGHT.toDouble, Black()))

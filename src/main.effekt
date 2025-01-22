@@ -4,7 +4,6 @@ import mutable/map
 import src/drawable/hitbox
 import src/drawable/manipulated
 import src/drawable/simple
-import src/drawable/image
 import src/game/constants
 import src/game/game
 import src/game/gameobject
@@ -55,6 +54,36 @@ def main(): Unit = {
             ctx.get.drawCircle(
               center.x.toInt, center.y.toInt, radius.toInt, show(color)
             )
+          case Image(name, src, dest, _) =>
+            with on[MissingValue].report
+            val loadedImage = loadedImages.Immutable::get(name)
+            if (loadedImage.isLoaded()) {
+              val destUL = dest.getUpperLeft()
+              src match {
+                case Some(s) =>
+                  val srcUL = s.getUpperLeft()
+                  ctx.get.drawImage(
+                    loadedImage,
+                    srcUL.x.toInt,
+                    srcUL.y.toInt,
+                    s.getWidth().toInt,
+                    s.getHeight().toInt,
+                    destUL.x.toInt,
+                    destUL.y.toInt,
+                    dest.getWidth().toInt,
+                    dest.getHeight().toInt
+                  )
+                case None() =>
+                  ctx.get.drawImage(
+                    loadedImage,
+                    destUL.x.toInt,
+                    destUL.y.toInt,
+                    dest.getWidth().toInt,
+                    dest.getHeight().toInt
+                  )
+              }
+            }
+          case Animation(current, _) => drawSimple(current.frame)
         }
 
         def unwrapDraw(d: ManipulatedDrawable): Unit = d match {
@@ -77,18 +106,6 @@ def main(): Unit = {
           show(text.fontSizePX) ++ "px " ++ show(text.fontType), 
           show(text.alignment), show(text.baseline), show(text.color)
         )
-        resume(())
-      }
-      def drawImageWithName(imageName, pos) = {
-        with on[MissingValue].report
-        val loadedImage = loadedImages.Immutable::get(imageName)
-        if (loadedImage.isLoaded()) {
-          ctx.get.drawImage(
-            loadedImage,
-            pos.x.toInt,
-            pos.y.toInt
-          )
-        }
         resume(())
       }
       def clear = { ctx.get.clear(); resume(()) }

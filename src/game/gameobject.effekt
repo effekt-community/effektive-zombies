@@ -1,26 +1,39 @@
 module game/gameObject
 
+import src/drawable/simple
 import src/drawable/manipulated
 import src/vec2d
 
+type LifeState {
+  Dead()
+  Alive()
+}
+
 type GameObject {
   Bullet(drawable: ManipulatedDrawable, movementVector: Vec2d)
-  Zombie(drawable: ManipulatedDrawable, movementVector: Vec2d)
+  Zombie(drawable: ManipulatedDrawable, movementVector: Vec2d, liveState: LifeState)
 }
 
 def getCenter(object: GameObject): Vec2d = object match {
   case Bullet(hitbox, _) => hitbox.getCenter()
-  case Zombie(hitbox, _) => hitbox.getCenter()
+  case Zombie(hitbox, _, _) => hitbox.getCenter()
 }
 
 def getHitbox(object: GameObject): ManipulatedDrawable = object match {
   case Bullet(hitbox, _) => hitbox
-  case Zombie(hitbox, _) => hitbox
+  case Zombie(hitbox, _, _) => hitbox
 }
 
 def move(gameObject: GameObject, dt: Int): GameObject = gameObject match {
   case Bullet(hitbox, movementVector) => 
     Bullet(hitbox.move(movementVector * dt), movementVector)
-  case Zombie(hitbox, movementVector) =>
-    Zombie(hitbox.move(movementVector * dt), movementVector)
+  case Zombie(hitbox, movementVector, dead) =>
+    Zombie(hitbox.move(movementVector * dt), movementVector, dead)
+}
+
+def animate(gameObject: GameObject, dt: Int): GameObject / Animation = gameObject match {
+  case Bullet(drawable, vec) =>
+    Bullet(drawable.animate(dt), vec)
+  case Zombie(drawable, vec, dead) =>
+    Zombie(drawable.animate(dt), vec, dead)
 }
