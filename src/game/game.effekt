@@ -56,6 +56,9 @@ type Side {
 
 val SIDES = [Top(), Right(), Bottom(), Left()]
 
+/// Returns a zombie randomly with a position 
+/// on the outside of one of the screen edges 
+/// (such that its barely not visible upon spawn)
 def spawnZombie(): GameObject / random = {
   val w = GAME_WIDTH.toDouble
   val h = GAME_HEIGHT.toDouble
@@ -64,14 +67,16 @@ def spawnZombie(): GameObject / random = {
   val spawnSide = SIDES.choose(sideProbs).getOrElse{Right()}
   val r = do random()
   val zombiePos = spawnSide match {
-    case Right() => Vec2d(w, r * h)
-    case Bottom() => Vec2d(r * w, h)
-    case Left() => Vec2d(0.0, r * h)
-    case Top() => Vec2d(r * w, 0.0)
+    case Right() => Vec2d(w, r * h) + Vec2d(ZOMBIE_WIDTH, 0.0)
+    case Bottom() => Vec2d(r * w, h) + Vec2d(0.0, ZOMBIE_HEIGHT)
+    case Left() => Vec2d(0.0, r * h) - Vec2d(ZOMBIE_WIDTH, 0.0)
+    case Top() => Vec2d(r * w, 0.0) - Vec2d(0.0, ZOMBIE_HEIGHT)
   }
   zombieFactory(zombiePos)
 }
 
+/// Create a bullet with a position on the end of the player's pistol barrel
+/// if the left mouse button is clicked, else Nil
 def spawnBullet(player: Player): List[GameObject] / Input = {
   if (do isPressed(LEFT_CLICK)) {
     val playerCenter = player.drawable.getCenter()
@@ -85,6 +90,9 @@ def spawnBullet(player: Player): List[GameObject] / Input = {
   } else Nil()
 }
 
+/// Get the normalized movement vector representing the keyboard inputs of the player
+/// Example: W and A are pressed
+/// wasdDirection() -> Vec2d(-sqrt(2), -sqrt(2))
 def wasdDirection(): Vec2d / Input = {
   val wPressed = do isPressed("w") || do isPressed("W")
   val aPressed = do isPressed("a") || do isPressed("A")
@@ -115,6 +123,11 @@ def die(gameObject: GameObject): GameObject = gameObject match {
     )
 }
 
+/// Returns the remaining objects, the amount of shot zombies 
+/// and wether the a bullet missed:
+/// - letting zombies colliding with bullets die
+/// - removing bullets colliding with alive zombies
+/// - removing bullets outside the screen
 def shooting(objects: List[GameObject]): (List[GameObject], Int, Bool) = {
   val (inRange, outOfRange) = objects.partition {
     case Bullet(hitbox, _) => hitbox.visible()
@@ -164,6 +177,7 @@ def update(game: GameState, dt: Int): GameState / { Input, random } = game.menu 
     val wave = game.wave
     val score = game.score
 
+    //check if bullet can and should be shot
     val (updatedBulletTimer, shotBullet) = 
       try { timers.bulletTimer.timer(dt, Nil[GameObject]) }
       with elapsed[List[GameObject]] {
@@ -183,6 +197,7 @@ def update(game: GameState, dt: Int): GameState / { Input, random } = game.menu 
     val playerHealthLoss = damagingZombies.size
 
     val movedObjects = remainingObjects.map {
+      //make zombies chase the player
       case Zombie(h, m, Alive()) =>
         val zombieCenter = h.getCenter()
         val zombiePlayerVec = player.drawable.getCenter() - zombieCenter
@@ -228,7 +243,8 @@ def update(game: GameState, dt: Int): GameState / { Input, random } = game.menu 
 
 def render(game: GameState): Unit / { Canvas, Input } = game.menu match {
   case Main() => renderMainMenu()
-  case InGame() => 
+  case InGame() =>
+    //Draw the gun of the player according to his rotation 
     val gunAngle = 
       angleClockwise(do mousePos() - game.player.drawable.getCenter())
     do clear()
@@ -272,6 +288,8 @@ def renderUI(game: GameState): Unit / Canvas = {
   hearts.nextToEachOther(LIFE_POS, HEART_PADDING.toDouble)
 }
 
+/// Draw the given amount of the digits next to each other from left to right nicely.
+/// If more digits should be drawn than in the list, 0's get prepended
 def drawDigits(rawDigits: List[Int], howMany: Int, startingWhere: Vec2d): Unit / Canvas = {
   val digits = fill(howMany - rawDigits.size(), 0)
               .append(rawDigits.take(SCORE_DIGITS))
@@ -279,6 +297,8 @@ def drawDigits(rawDigits: List[Int], howMany: Int, startingWhere: Vec2d): Unit /
   digits.nextToEachOther(startingWhere, 0.0)
 }
 
+/// Draw the given drawables next to each other from left to right,
+/// spacing them by their individual width and a specified padding
 def nextToEachOther(
   drawables: List[SimpleDrawable],
   from: Vec2d,
@@ -291,6 +311,7 @@ def nextToEachOther(
   }
 }
 
+/// digits(420) = List(4, 2, 0)
 def digits(n: Int): List[Int] = {
   var remainder = n
   var digits = Nil[Int]()

@@ -82,6 +82,8 @@ def isInsideCircle(edge: (Vec2d, Vec2d), circleCenter: Vec2d, circleRadius: Doub
   length(projected - circleCenter) <= circleRadius 
 }
 
+/// Returns true if the shape described by h1 overlaps with the one
+/// described by h2, false otherwise
 def collides(h1: Hitbox, h2: Hitbox): Bool = h1 match {
   case HRect(c11, c12, c13, c14) => h2 match {
     case HRect(c21, c22, c23, c24) =>

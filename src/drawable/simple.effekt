@@ -32,12 +32,16 @@ def changeColor(frame: Frame, to: Color): Frame =
 type SimpleDrawable {
   Rect(upperLeft: Vec2d, width: Double, height: Double, color: Color)
   Circle(center: Vec2d, radius: Double, color: Color)
+  // src describes the shape which defines which part of the source image gets
+  // taken to be rendered into the dest shape. If src is None, the whole
+  // source image is taken. src and dest are interpreted as rectangles
   Image(
     name: String, src: Option[SimpleDrawable], dest: SimpleDrawable, hitbox: Hitbox
   )
   Animation(current: Frame, next: List[Frame])
 }
 
+/// Map a function f over all frame drawables contained in this animation
 def mapAnimation(
   animation: SimpleDrawable
   ) { f: SimpleDrawable => SimpleDrawable }: SimpleDrawable = animation match {
@@ -53,6 +57,10 @@ interface Animation {
   def finished(): Nothing
 }
 
+
+/// Animate this Drawable according to the elapsed time dt. If the current
+/// frame timer is elapsed, we move on to the next frame. If no frame is left,
+/// the animation is finished
 def animate(drawable: SimpleDrawable, dt: Int): SimpleDrawable / Animation = drawable match {
   case Animation(current, next) => 
     val newCurrTimer = current.timer.elapse(dt)
@@ -116,6 +124,7 @@ def getUpperLeft(drawable: SimpleDrawable): Vec2d = drawable match {
   case Animation(current, _) => current.frame.getUpperLeft()
 }
 
+/// Move this drawable such that its new center is at the given point
 def centerAt(drawable: SimpleDrawable, center: Vec2d): SimpleDrawable = drawable match {
   case Rect(_, width, height, color) => 
     Rect(center - Vec2d(width / 2.0, height / 2.0), width, height, color)
@@ -126,6 +135,7 @@ def centerAt(drawable: SimpleDrawable, center: Vec2d): SimpleDrawable = drawable
   case Animation(_, _) => drawable.mapAnimation{s => s.centerAt(center)}
 }
 
+/// Move this drawable such that its new upperleft corner is at the given point
 def upperLeftAt(drawable: SimpleDrawable, upperLeft: Vec2d): SimpleDrawable = drawable match {
   case Rect(_, w, h, c) => Rect(upperLeft, w, h, c)
   case Circle(_, r, c) => Circle(upperLeft + Vec2d(r, r), r, c)

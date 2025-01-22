@@ -19,6 +19,12 @@ def getCenter(drawable: ManipulatedDrawable): Vec2d = drawable match {
   case Compose(first, second) => first.getCenter()
 }
 
+/// Collapses neighboring ManipulatedDrawable.Rotate wrappers
+/// if their relative point is the same. The returned shape describes
+/// the same shape as before, just with possibly less Rotate wrappers
+/// Example: 
+/// collapseRotations(Rotate(Rotate(inner, 2, None()), 40, None()))
+/// -> Rotate(inner, 42, None())
 def collapseRotations(d: ManipulatedDrawable): ManipulatedDrawable = d match {
   case Simple(inner) => Simple(inner)
   case Rotate(Rotate(inner, innerRotation, innerRelative), rotation, relativeTo) =>

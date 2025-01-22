@@ -14,6 +14,10 @@ import src/vec2d
 
 val ASPECT_RATIO = 16.0 / 9.0
 
+/// Adjusts the given width and height to fit the aspect ratio 
+/// (differing by at most one pixel).
+/// The calculated width and height are less or equal to the given sizes
+/// Example (aspect ratio 16:9): fittingSizes(16, 10) -> (16, 9)
 def fittingSizes(width: Int, height: Int): (Int, Int) = {
   if(height.toDouble * ASPECT_RATIO > width.toDouble) {
     (width, (width.toDouble / ASPECT_RATIO).toInt)
