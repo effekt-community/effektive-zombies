@@ -77,7 +77,7 @@ def spawnZombie(): GameObject / random = {
 
 /// Create a bullet with a position on the end of the player's pistol barrel
 /// if the left mouse button is clicked, else Nil
-def spawnBullet(player: Player): List[GameObject] / Input = {
+def spawnBullet(player: Player): Option[GameObject] / Input = {
   if (do isPressed(LEFT_CLICK)) {
     val playerCenter = player.drawable.getCenter()
     val gunAngle = angleClockwise(do mousePos() - playerCenter)
@@ -86,8 +86,8 @@ def spawnBullet(player: Player): List[GameObject] / Input = {
       Rotate(Simple(bulletDrawable), gunAngle, Some(playerCenter)),
       Vec2d(BULLET_SPEED, 0.0).rotate(gunAngle)
     )
-    [bullet]
-  } else Nil()
+    Some(bullet)
+  } else None()
 }
 
 /// Get the normalized movement vector representing the keyboard inputs of the player
@@ -118,7 +118,7 @@ def die(gameObject: GameObject): GameObject = gameObject match {
   case Bullet(_, _) => gameObject
   case Zombie(drawable, _, _) => 
     Zombie(
-      drawable.setInner(ZOMBIE_DEATH_ANIMATION.centerAt(drawable.getCenter())), 
+      drawable.setInner(ZOMBIE_DEATH_ANIMATION.wrap.centerAt(drawable.getCenter())), 
       NULL_VECTOR, Dead()
     )
 }
@@ -179,15 +179,16 @@ def update(game: GameState, dt: Int): GameState / { Input, random } = game.menu 
 
     //check if bullet can and should be shot
     val (updatedBulletTimer, shotBullet) = 
-      try { timers.bulletTimer.timer(dt, Nil[GameObject]) }
-      with elapsed[List[GameObject]] {
+      try { 
+        val updated = timers.bulletTimer.elapse(dt)
+        (updated, None())
+      } with elapsed { overflow => 
         val bullet = spawnBullet(player)
-        val timer = if (bullet.isEmpty) Timer(0) else Timer(BULLET_INTERVAL) 
-        (timer, bullet)
+        (Timer(if (bullet.isEmpty) 0 else BULLET_INTERVAL), bullet)
       }
 
     val (remaining, deadZombies, bulletMissed) = 
-      shooting(shotBullet.append(objects))
+      shooting(shotBullet.toList.append(objects))
 
     val (damagingZombies, remainingObjects) = remaining.partition {
       case Zombie(hitbox, _, Alive()) => hitbox.collides(Simple(player.drawable))
@@ -208,24 +209,26 @@ def update(game: GameState, dt: Int): GameState / { Input, random } = game.menu 
     }
 
     val (updatedWaveTimer, updatedWave) = 
-      try { timers.waveTimer.timer[Int](deadZombies, wave) }
-      with elapsed[Int] {
-        val newWave = inc(wave)
-        (Timer(START_WAVE_TIMER * newWave), newWave)
+      try { 
+        val updated = timers.waveTimer.elapse(deadZombies)
+        (updated, wave)
+      } with elapsed { overflow =>
+        val newWave = inc(wave); 
+        (Timer(START_WAVE_TIMER * newWave - overflow), newWave)
       }
 
     val (updatedZombieTimer, spawnedZombie) = 
-      try { timers.zombieTimer.timer(dt, Nil[GameObject]) }
-      with elapsed[List[GameObject]] { 
-        (Timer(ZOMBIE_SPAWN_INTERVAL / updatedWave), [spawnZombie()])
+      try { 
+          val updated = timers.zombieTimer.elapse(dt)
+          (updated, None()) 
+      } with elapsed { overflow =>
+          (Timer(ZOMBIE_SPAWN_INTERVAL / updatedWave), Some(spawnZombie())) 
       }
 
     val updatedPlayer = movedPlayer.changeHealth(playerHealthLoss.neg)
                         .keepInsideScreen()
-    val updatedObjects = spawnedZombie.append(movedObjects).foldRight(Nil()){(o, os) => 
-      try { Cons(o.animate(dt), os) } with Animation {
-        def finished() = os
-      }
+    val updatedObjects = spawnedZombie.toList.append(movedObjects).foldRight(Nil()){
+      (o, os) => try { Cons(o.animate(dt), os) } with animationFinished { os }
     }
     val updatedTimers = 
       GameTimer(updatedZombieTimer, updatedWaveTimer, updatedBulletTimer)
@@ -292,7 +295,7 @@ def renderUI(game: GameState): Unit / Canvas = {
 /// If more digits should be drawn than in the list, 0's get prepended
 def drawDigits(rawDigits: List[Int], howMany: Int, startingWhere: Vec2d): Unit / Canvas = {
   val digits = fill(howMany - rawDigits.size(), 0)
-              .append(rawDigits.take(SCORE_DIGITS))
+              .append(rawDigits.take(howMany))
               .map{ d => digitImage(d) }
   digits.nextToEachOther(startingWhere, 0.0)
 }

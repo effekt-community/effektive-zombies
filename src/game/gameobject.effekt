@@ -31,7 +31,9 @@ def move(gameObject: GameObject, dt: Int): GameObject = gameObject match {
     Zombie(hitbox.move(movementVector * dt), movementVector, dead)
 }
 
-def animate(gameObject: GameObject, dt: Int): GameObject / Animation = gameObject match {
+def animate(
+  gameObject: GameObject, dt: Int
+): GameObject / animationFinished = gameObject match {
   case Bullet(drawable, vec) =>
     Bullet(drawable.animate(dt), vec)
   case Zombie(drawable, vec, dead) =>

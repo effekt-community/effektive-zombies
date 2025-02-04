@@ -73,7 +73,9 @@ def setInner(d: ManipulatedDrawable, to: SimpleDrawable): ManipulatedDrawable = 
   case Compose(first, second) => Compose(first.setInner(to), second)
 }
 
-def animate(d: ManipulatedDrawable, dt: Int): ManipulatedDrawable / Animation = d match {
+def animate(
+  d: ManipulatedDrawable, dt: Int
+): ManipulatedDrawable / animationFinished = d match {
   case Simple(inner) => Simple(inner.animate(dt))
   case Rotate(inner, rot, rel) => Rotate(inner.animate(dt), rot, rel)
   case Compose(first, second) => Compose(first.animate(dt), second.animate(dt))

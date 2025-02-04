@@ -65,10 +65,9 @@ def gameSuite() = suite("game") {
     val nonElapsing = [0, 1, 2, 3]
     val notElapsed = nonElapsing.map { dt => 
       try { 
-        val (newTimer, _) = timer.timer(dt, ())
-        timer = newTimer 
+        timer = timer.elapse(dt) 
         true
-      } with elapsed[Unit] { false }
+      } with elapsed { _ => false }
     }
 
     assertTrue(notElapsed.all{ x => x })
@@ -77,9 +76,9 @@ def gameSuite() = suite("game") {
     val elapsing = [4, 5]
     val elapsed = elapsing.map { dt =>
       try {
-        timer.timer(dt, ())
+        timer.elapse(dt)
         false
-      } with elapsed[Unit] { true }
+      } with elapsed { _ => true }
     }
 
     assertTrue(elapsed.all{ x => x })
@@ -151,5 +150,11 @@ def gameSuite() = suite("game") {
       remaining.contains(BULLET){(a, b) => a.equals(b)},
       "Bullet that hit zombie is still in the game"
     )
+  }
+
+  test("digits") {
+    val digits = digits(420)
+
+    assertEqual(digits, [4, 2, 0])
   }
 }

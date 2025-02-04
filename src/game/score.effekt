@@ -2,8 +2,7 @@ module game/score
 
 record Score(score: Int, combo: Int, maxCombo: Int)
 
-/// Zombie hit = 1 Point * current combo
-/// combobreak -> reset to 0 combo
+/// one Zombie hit = 1 Point * current combo
 def update(score: Score, comboBreak: Bool, hits: Int): Score = {
   var combo = if (comboBreak) 0 else score.combo
   var hitsM = hits

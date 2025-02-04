@@ -6,5 +6,11 @@ result
 result-*
 
 # Latex
-presentation/*
-!presentation/presentation.tex
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.gz
+*.toc
+presentation/presentation.pdf

@@ -1,8 +1,5 @@
 module ffi
 
-extern pure def toDouble(b: Bool): Double = 
-  js "(function() { if (${b}) { return 1; } else { return 0; }})()"
-
 extern type Event
 
 extern io def addEventListener(eventType: String, callback: Event => Unit at {io, global}): Unit =
@@ -97,7 +94,7 @@ extern io def drawText(
            ${ctx}.fillText(${text}, ${x}, ${y})"""
 
 //Sets up the transformation matrix to rotate all later drawn shapes clockwise by 
-// the given angle relative to the given coordinates
+//the given angle relative to the given coordinates
 extern io def setupRotation(
   ctx: Context2D, angle: Double, 
   relativeToX: Int, relativeToY: Int

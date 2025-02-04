@@ -48,8 +48,9 @@ def infixLte(vec1: Vec2d, vec2: Vec2d): Bool =
 
 def show(vec: Vec2d) = "Vec2d(" ++ show(vec.x) ++ ", " ++ show(vec.y) ++ ")"
 
-//Calculates the angle of the vector relative to the x-axis, the resulting angle is interpreted like this:
-//if we rotate the x-axis by the returned angle clockwise, it is parallel to the given vector
+/// Calculates the angle of the vector relative to the x-axis, the resulting 
+/// angle is interpreted like this: If we rotate the x-axis by the returned 
+/// angle clockwise, it is parallel to the given vector
 def angleClockwise(vec1: Vec2d): Double = {
   if (vec1.x != 0.0) {
     val angle = atan(vec1.y / vec1.x) 
@@ -63,8 +64,8 @@ def angleClockwise(vec1: Vec2d): Double = {
 def rotate(toRotate: Vec2d, angle: Double, relativeTo: Vec2d): Vec2d =
   relativeTo + rotate(toRotate - relativeTo, angle)
 
-//rotates the given vector clockwise by the given angle, relative to the origin
-// https://matthew-brett.github.io/teaching/rotation_2d.html  
+/// Rotates the given vector clockwise by the given angle, relative to the origin
+/// https://matthew-brett.github.io/teaching/rotation_2d.html  
 def rotate(toRotate: Vec2d, angle: Double): Vec2d = {
   val sinCW = sin(angle)
   val cosCW = cos(angle)

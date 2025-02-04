@@ -32,6 +32,7 @@ def main(): Unit = {
     case (key, path) => (key, loadImage(path)) 
   }
 
+  //Game Loop
   def idleCallback(deadline: IdleDeadline): Unit = {
     val currentFrameTimeStamp = getTime()
     val frameInterval = 
@@ -83,7 +84,7 @@ def main(): Unit = {
                   )
               }
             }
-          case Animation(current, _) => drawSimple(current.frame)
+          case AnimationW(animation) => drawSimple(animation.current.frame)
         }
 
         def unwrapDraw(d: ManipulatedDrawable): Unit = d match {
