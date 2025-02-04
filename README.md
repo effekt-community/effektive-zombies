@@ -10,6 +10,10 @@ Run with Effekt: `effekt ./src/main.effekt --backend js-web --includes .`
 
 Open `out/main.html`
 
+## Controls
+
+WASD to move, mouse for aiming, left-click to shoot.
+
 ## Gameplay Mechanics
 
 `Wave`: Shown in the top left corner of the in-game screen. The higher the wave, the more frequent zombies spawn.
