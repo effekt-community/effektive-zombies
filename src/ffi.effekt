@@ -2,20 +2,20 @@ module ffi
 
 extern type Event
 
-extern io def addEventListener(eventType: String, callback: Event => Unit at {io, global}): Unit =
+extern def addEventListener(eventType: String, callback: Event => Unit at {io, global}) at io: Unit =
   jsWeb """document.defaultView.addEventListener(${eventType}, 
            (event) => $effekt.runToplevel((ks, k) => ${callback}(event, ks, k)))"""
 
-extern pure def getKey(event: Event): String =
+extern def getKey(event: Event) at {}: String =
   jsWeb "${event}.key"
 
-extern pure def getClientX(event: Event): Double = 
+extern def getClientX(event: Event) at {}: Double = 
   jsWeb "${event}.clientX"
 
-extern pure def getClientY(event: Event): Double =
+extern def getClientY(event: Event) at {}: Double =
   jsWeb "${event}.clientY"
 
-extern pure def getButton(event: Event): Int =
+extern def getButton(event: Event) at {}: Int =
   jsWeb "${event}.button"
 
 extern type Context2D
@@ -34,7 +34,7 @@ extern jsWeb """
   }
 """
 
-extern io def createCanvas(width: Int, height: Int): Context2D =
+extern def createCanvas(width: Int, height: Int) at io: Context2D =
   jsWeb """(function(){
   canvas = document.createElement("canvas");
   canvas.id = "canvas";
@@ -53,40 +53,40 @@ extern io def createCanvas(width: Int, height: Int): Context2D =
   """
 
 ///https://www.youtube.com/watch?v=1y57COMRSdA
-extern io def resizeCanvas(width: Int, height: Int): Context2D =
+extern def resizeCanvas(width: Int, height: Int) at io: Context2D =
   jsWeb """(function(){
   canvas = get$canvas();
   return $resize(canvas, ${width}, ${height});
   })()
   """
 
-extern io def drawRect(
+extern def drawRect(
   ctx: Context2D, x: Int, y: Int, 
   width: Int, height: Int, color: String
-): Unit =
+) at io: Unit =
   jsWeb """${ctx}.fillStyle = ${color}; 
            ${ctx}.fillRect(${x}, ${y}, ${width}, ${height});"""
 
-extern io def drawCircle(
+extern def drawCircle(
   ctx: Context2D, x: Int, y: Int, 
   radius: Int, color: String
-): Unit =
+) at io: Unit =
   jsWeb """${ctx}.fillStyle = ${color};
            ${ctx}.beginPath();
            ${ctx}.arc(${x}, ${y}, ${radius}, 0, 2 * Math.PI);
            ${ctx}.fill();"""
 
-extern io def clear(ctx: Context2D): Unit = 
+extern def clear(ctx: Context2D) at io: Unit = 
   jsWeb """canvas = get$canvas();
            w = canvas.width;
            h = canvas.height;
            ${ctx}.clearRect(0, 0, w, h)"""
 
-extern io def drawText(
+extern def drawText(
   ctx: Context2D, text: String,
   x: Int, y: Int, font: String, 
   alignment: String, baseline: String, color: String
-): Unit =
+) at io: Unit =
   jsWeb """${ctx}.font = ${font};
            ${ctx}.textAlign = ${alignment};
            ${ctx}.textBaseline = ${baseline};
@@ -95,61 +95,61 @@ extern io def drawText(
 
 //Sets up the transformation matrix to rotate all later drawn shapes clockwise by 
 //the given angle relative to the given coordinates
-extern io def setupRotation(
+extern def setupRotation(
   ctx: Context2D, angle: Double, 
   relativeToX: Int, relativeToY: Int
-): Unit =
+) at io: Unit =
   jsWeb """${ctx}.translate(${relativeToX}, ${relativeToY});
            ${ctx}.rotate(${angle});
            ${ctx}.translate(-${relativeToX}, -${relativeToY});"""
 
 extern type DOMMatrix
 
-extern io def getTransform(ctx: Context2D): DOMMatrix = 
+extern def getTransform(ctx: Context2D) at io: DOMMatrix = 
   jsWeb "${ctx}.getTransform();"
 
-extern io def setTransform(ctx: Context2D, matrix: DOMMatrix): Unit =
+extern def setTransform(ctx: Context2D, matrix: DOMMatrix) at io: Unit =
   jsWeb "${ctx}.setTransform(${matrix});"
 
 extern type HTMLImage
 
-extern io def loadImage(path: String): HTMLImage = 
+extern def loadImage(path: String) at io: HTMLImage = 
   jsWeb """(function(){
   image = new Image();
   image.src = ${path};
   return image;
   })()"""
 
-extern io def isLoaded(image: HTMLImage): Bool =
+extern def isLoaded(image: HTMLImage) at io: Bool =
   jsWeb "${image}.complete"
 
-extern io def drawImage(
+extern def drawImage(
   ctx: Context2D, image: HTMLImage,
   dx: Int, dy: Int, 
   dwidth: Int, dheight: Int
-): Unit =
+) at io: Unit =
   jsWeb "${ctx}.drawImage(${image}, ${dx}, ${dy}, ${dwidth}, ${dheight})"
 
-extern io def drawImage(
+extern def drawImage(
   ctx: Context2D, image: HTMLImage,
   srcx: Int, srcy: Int,
   srcwidth: Int, srcheight: Int,
   dx: Int, dy: Int, 
   dwidth: Int, dheight: Int
-): Unit =
+) at io: Unit =
   jsWeb """${ctx}.drawImage(
               ${image}, ${srcx}, ${srcy}, ${srcwidth}, ${srcheight}, 
               ${dx}, ${dy}, ${dwidth}, ${dheight})"""
 
 extern type IdleDeadline
 
-extern io def requestIdleCallback(callback: (IdleDeadline) => Unit at {io, global}): Unit =
+extern def requestIdleCallback(callback: (IdleDeadline) => Unit at {io, global}) at io: Unit =
   jsWeb "window.requestIdleCallback(deadline => $effekt.runToplevel((ks, k) => ${callback}(deadline, ks, k)))"
 
-extern io def getTime(): Int = jsWeb "Date.now()"
+extern def getTime() at io: Int = jsWeb "Date.now()"
 
-extern io def windowWidth(): Int = 
+extern def windowWidth() at io: Int = 
   jsWeb "window.innerWidth"
 
-extern io def windowHeight(): Int =
+extern def windowHeight() at io: Int =
   jsWeb "window.innerHeight"
