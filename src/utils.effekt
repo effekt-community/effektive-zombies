@@ -60,9 +60,9 @@ def choose[T](chooseFrom: List[T], probabilities: List[Double]): Option[T] / ran
   }
   val random = do random()
   def p(t: Double): Bool = random > t
-  val chosenIndex = thresholds.reverse.findIndex(p)
-  
-  val chosen = default[OutOfBounds, Option[T]] { None() } 
+  val chosenIndex = thresholds.reverse.findIndex(box p)
+
+  val chosen = default[OutOfBounds, Option[T]] { None() }
     { Some(chooseFrom.reverse.get(chosenIndex)) }
   chosen
 }
@@ -95,20 +95,20 @@ namespace Immutable {
       val (k, v) = pair
       k.equals(key)
     }
-    val keyIndex = findIndex(map, predicate)
+    val keyIndex = findIndex(map, box predicate)
     keyIndex match {
       case -1 => Cons((key, value), map)
       case n => map.updateAt(n) { _ => (key, value) }
     }
   }
-  
+
   def get[K, V](map: Immutable::Map[K, V], key: K): V / Exception[MissingValue] = {
     def predicate(pair: (K, V)): Bool = {
       val (k, v) = pair
       k.equals(key)
     }
-    val keyIndex = map.findIndex(predicate)
-    val (_, v) = try { 
+    val keyIndex = map.findIndex(box predicate)
+    val (_, v) = try {
       map.get(keyIndex)
     } with Exception[OutOfBounds] { def raise(_, _) = missingValue() }
     v

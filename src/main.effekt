@@ -173,12 +173,12 @@ def main(): Unit = {
     ctx.set(resizeCanvas(newWidth, newHeight))
   }
 
-  addEventListener(KEY_DOWN, pressedHandler)
-  addEventListener(KEY_UP, releasedHandler)
-  addEventListener(MOUSE_MOVE, mouseMoveHandler)
-  addEventListener(MOUSE_DOWN, mouseDownHandler)
-  addEventListener(MOUSE_UP, mouseUpHandler)
-  addEventListener(RESIZE, resizeHandler)
+  addEventListener(KEY_DOWN, box pressedHandler)
+  addEventListener(KEY_UP, box releasedHandler)
+  addEventListener(MOUSE_MOVE, box mouseMoveHandler)
+  addEventListener(MOUSE_DOWN, box mouseDownHandler)
+  addEventListener(MOUSE_UP, box mouseUpHandler)
+  addEventListener(RESIZE, box resizeHandler)
 
-  requestIdleCallback(idleCallback)
+  requestIdleCallback(box idleCallback)
 }
