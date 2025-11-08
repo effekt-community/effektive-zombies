@@ -60,20 +60,15 @@ def choose[T](chooseFrom: List[T], probabilities: List[Double]): Option[T] / ran
   }
   val random = do random()
   def p(t: Double): Bool = random > t
-  val chosenIndex = thresholds.reverse.findIndex(p)
-  
-  val chosen = default[OutOfBounds, Option[T]] { None() } 
+  val chosenIndex = thresholds.reverse.findIndex {p}
+
+  val chosen = default[OutOfBounds, Option[T]] { None() }
     { Some(chooseFrom.reverse.get(chosenIndex)) }
   chosen
 }
 
-def contains[T](list: List[T], elem: T) { equals: (T, T) => Bool }: Bool = list match {
-  case Cons(x, rest) => x.equals(elem) || rest.contains(elem) {equals}
-  case Nil() => false
-}
-
 /// Find the index of the first element satisfying the predicate
-def findIndex[T](list: List[T], predicate: T => Bool at {}): Int = {
+def findIndex[T](list: List[T]) { predicate: T => Bool }: Int = {
   def go(list: List[T], i: Int): Int = list match {
     case Cons(x, rest) => if (predicate(x)) i else go(rest, i + 1)
     case Nil() => -1
@@ -91,24 +86,16 @@ namespace Immutable {
   def update[K, V](
     map: Immutable::Map[K, V], key: K, value: V
   ): Immutable::Map[K, V] = {
-    def predicate(pair: (K, V)): Bool = {
-      val (k, v) = pair
-      k.equals(key)
-    }
-    val keyIndex = findIndex(map, predicate)
+    val keyIndex = map.findIndex { case (k, _v) => k.equals(key) }
     keyIndex match {
       case -1 => Cons((key, value), map)
       case n => map.updateAt(n) { _ => (key, value) }
     }
   }
-  
+
   def get[K, V](map: Immutable::Map[K, V], key: K): V / Exception[MissingValue] = {
-    def predicate(pair: (K, V)): Bool = {
-      val (k, v) = pair
-      k.equals(key)
-    }
-    val keyIndex = map.findIndex(predicate)
-    val (_, v) = try { 
+    val keyIndex = map.findIndex { case (k, _v) => k.equals(key) }
+    val (_, v) = try {
       map.get(keyIndex)
     } with Exception[OutOfBounds] { def raise(_, _) = missingValue() }
     v
