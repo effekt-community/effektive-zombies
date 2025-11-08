@@ -120,8 +120,8 @@ def main(): Unit = {
     } with random {
       resume(random())
     }
-    
-    requestIdleCallback(idleCallback)
+
+    requestIdleCallback(box idleCallback)
   }
 
   def pressedHandler(event: Event): Unit = 
