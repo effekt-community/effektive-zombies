@@ -67,11 +67,6 @@ def choose[T](chooseFrom: List[T], probabilities: List[Double]): Option[T] / ran
   chosen
 }
 
-def contains[T](list: List[T], elem: T) { equals: (T, T) => Bool }: Bool = list match {
-  case Cons(x, rest) => x.equals(elem) || rest.contains(elem) {equals}
-  case Nil() => false
-}
-
 /// Find the index of the first element satisfying the predicate
 def findIndex[T](list: List[T]) { predicate: T => Bool }: Int = {
   def go(list: List[T], i: Int): Int = list match {
