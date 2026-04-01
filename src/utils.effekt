@@ -93,11 +93,10 @@ namespace Immutable {
     }
   }
 
-  def get[K, V](map: Immutable::Map[K, V], key: K): V / Exception[MissingValue] = {
+  def get[K, V](map: Immutable::Map[K, V], key: K): Option[V] = {
     val keyIndex = map.findIndex { case (k, _v) => k.genericEquals(key) }
-    val (_, v) = try {
-      map.get(keyIndex)
-    } with Exception[OutOfBounds] { def raise(_, _) = missingValue() }
-    v
+    try {
+      Some(map.get(keyIndex).second)
+    } with Exception[OutOfBounds] { def raise(_, _) = None() }
   }
 }
