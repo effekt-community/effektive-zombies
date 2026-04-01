@@ -19,6 +19,13 @@ def getCenter(drawable: ManipulatedDrawable): Vec2d = drawable match {
   case Compose(first, second) => first.getCenter()
 }
 
+def equals(a: Option[Vec2d], b: Option[Vec2d]): Bool =
+  (a, b) match {
+    case (Some(x), Some(y)) => x == y
+    case (None(), None()) => true
+    case _ => false
+  }
+
 /// Collapses neighboring ManipulatedDrawable.Rotate wrappers
 /// if their relative point is the same. The returned shape describes
 /// the same shape as before, just with possibly less Rotate wrappers

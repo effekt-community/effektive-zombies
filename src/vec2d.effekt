@@ -8,9 +8,9 @@ val NULL_VECTOR = Vec2d(0.0, 0.0)
 
 def fromInt(x: Int, y: Int): Vec2d = Vec2d(x.toDouble(), y.toDouble())
 
-def infixAdd(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x + vec2.x, vec1.y + vec2.y)
+def infixPlus(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x + vec2.x, vec1.y + vec2.y)
 
-def infixSub(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x - vec2.x, vec1.y - vec2.y)
+def infixMinus(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x - vec2.x, vec1.y - vec2.y)
 
 def dot(vec1: Vec2d, vec2: Vec2d): Double = vec1.x * vec2.x + vec1.y * vec2.y
 
@@ -21,15 +21,15 @@ def normalize(vec: Vec2d): Vec2d = {
   if (length != 0.0) Vec2d(vec.x / length, vec.y / length) else NULL_VECTOR
 }
 
-def infixMul(vec: Vec2d, scalar: Int): Vec2d = scalar * vec
+def infixStar(vec: Vec2d, scalar: Int): Vec2d = scalar * vec
 
-def infixMul(scalar: Int, vec: Vec2d): Vec2d = scalar.toDouble() * vec
+def infixStar(scalar: Int, vec: Vec2d): Vec2d = scalar.toDouble() * vec
 
-def infixMul(vec: Vec2d, scalar: Double) = scalar * vec
+def infixStar(vec: Vec2d, scalar: Double) = scalar * vec
 
-def infixMul(scalar: Double, vec: Vec2d): Vec2d = Vec2d(scalar * vec.x, scalar * vec.y)
+def infixStar(scalar: Double, vec: Vec2d): Vec2d = Vec2d(scalar * vec.x, scalar * vec.y)
 
-def infixMul(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x * vec2.x, vec1.y * vec2.y)
+def infixStar(vec1: Vec2d, vec2: Vec2d): Vec2d = Vec2d(vec1.x * vec2.x, vec1.y * vec2.y)
 
 def infixEq(vec1: Vec2d, vec2: Vec2d): Bool = 
   vec1.x.almostEqual(vec2.x, 0.001) && vec1.y.almostEqual(vec2.y, 0.001)
