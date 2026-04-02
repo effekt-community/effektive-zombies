@@ -125,7 +125,7 @@ def shapesSuite() = suite("shapes") {
     val point = Vec2d(0.0, -1.0)
     val hitbox = Rect(NULL_VECTOR, 3.0, 2.0, Red()).toHitbox()
       .rotate(1.25 * PI, Some(NULL_VECTOR))
-    val msg = "Point " ++ show(point) ++ " should be inside " ++ genericShow(hitbox)
+    val msg = "Point " ++ genericShow(point) ++ " should be inside " ++ genericShow(hitbox)
     assertTrue(point.isInside(hitbox), msg)
   }
   
@@ -136,7 +136,7 @@ def shapesSuite() = suite("shapes") {
       HCircle(Vec2d(1.0, 1.0), 1.4)
     )
     
-    val msg = "Point " ++ show(point) 
+    val msg = "Point " ++ genericShow(point) 
               ++ " should not be inside " ++ genericShow(hitbox)
     assertFalse(point.isInside(hitbox), msg)
   }
@@ -210,7 +210,7 @@ def shapesSuite() = suite("shapes") {
     hitboxOneCorners.foreach { c =>
       assertFalse(
         c.isInside(hitboxTwo),
-        show(c) ++ " should not be inside " ++ genericShow(hitboxTwo)
+        genericShow(c) ++ " should not be inside " ++ genericShow(hitboxTwo)
       )
     }
 

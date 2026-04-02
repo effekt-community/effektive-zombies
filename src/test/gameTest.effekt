@@ -41,8 +41,8 @@ def gameSuite() = suite("game") {
         def isPressed(key) = resume(keyMap.get(key).getOrElse { false })
         def mousePos() = resume(NULL_VECTOR)
       }
-      val msg = "Map " ++ show(keyMap.keys()) ++ " " ++ show(keyMap.values) ++ ".wasdDirection() = "
-                ++ show(calculated) ++ ", but expected " ++ show(expected) 
+      val msg = "Map " ++ genericShow(keyMap.keys()) ++ " " ++ genericShow(keyMap.values) ++ ".wasdDirection() = "
+                ++ genericShow(calculated) ++ ", but expected " ++ genericShow(expected) 
       assertTrue(calculated == expected, msg)
     }
     assertV(NULL_VECTOR)
@@ -128,26 +128,26 @@ def gameSuite() = suite("game") {
     assertTrue(missed, "Shot missed, but function signals the contrary")
 
     assertFalse(
-      remaining.contains(OUT_OF_RANGE){(a, b) => a.equals(b)},
+      remaining.contains(OUT_OF_RANGE){(a, b) => a.genericEquals(b)},
       "Bullet which leaved the screen was not removed"
     )
 
     assertTrue(
-      remaining.contains(MISSING_BULLET){(a, b) => a.equals(b)},
+      remaining.contains(MISSING_BULLET){(a, b) => a.genericEquals(b)},
       "Bullet that missed but is inside the screen was removed"
     )
 
     assertTrue(
-      remaining.contains(ALIVE){(a, b) => a.equals(b)},
+      remaining.contains(ALIVE){(a, b) => a.genericEquals(b)},
       "Zombie that was not shot is dead"
     )
     assertFalse(
-      remaining.contains(SHOT_ZOMBIE){(a, b) => a.equals(b)},
+      remaining.contains(SHOT_ZOMBIE){(a, b) => a.genericEquals(b)},
       "Shot zombie is not dead"
     )
 
     assertFalse(
-      remaining.contains(BULLET){(a, b) => a.equals(b)},
+      remaining.contains(BULLET){(a, b) => a.genericEquals(b)},
       "Bullet that hit zombie is still in the game"
     )
   }
