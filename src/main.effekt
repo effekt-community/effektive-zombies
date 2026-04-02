@@ -48,23 +48,23 @@ def main(): Unit = {
         def drawSimple(d: SimpleDrawable): Unit = d match {
           case Rect(upperLeft, width, height, color) =>
             ctx.get.drawRect(
-              upperLeft.x.toInt, upperLeft.y.toInt, 
-              width.toInt, height.toInt, show(color)
+              upperLeft.x.toInt, upperLeft.y.toInt,
+              width.toInt, height.toInt, drawable::simple::show(color)
             )
           case Circle(center, radius, color) =>
             ctx.get.drawCircle(
-              center.x.toInt, center.y.toInt, radius.toInt, show(color)
+              center.x.toInt, center.y.toInt, radius.toInt, drawable::simple::show(color)
             )
           case Image(name, src, dest, _) =>
             with on[MissingValue].report
             val loadedImage = loadedImages.Immutable::get(name)
-            if (loadedImage.isLoaded()) {
+            if (loadedImage is Some(img) and img.isLoaded()) {
               val destUL = dest.getUpperLeft()
               src match {
                 case Some(s) =>
                   val srcUL = s.getUpperLeft()
                   ctx.get.drawImage(
-                    loadedImage,
+                    img,
                     srcUL.x.toInt,
                     srcUL.y.toInt,
                     s.getWidth().toInt,
@@ -76,7 +76,7 @@ def main(): Unit = {
                   )
                 case None() =>
                   ctx.get.drawImage(
-                    loadedImage,
+                    img,
                     destUL.x.toInt,
                     destUL.y.toInt,
                     dest.getWidth().toInt,
@@ -104,8 +104,8 @@ def main(): Unit = {
       def write(text) = {
         ctx.get.drawText(
           text.text, text.position.x.toInt, text.position.y.toInt,
-          show(text.fontSizePX) ++ "px " ++ show(text.fontType), 
-          show(text.alignment), show(text.baseline), show(text.color)
+          show(text.fontSizePX) ++ "px " ++ drawable::text::show(text.fontType),
+          drawable::text::show(text.alignment), drawable::text::show(text.baseline), drawable::simple::show(text.color)
         )
         resume(())
       }
